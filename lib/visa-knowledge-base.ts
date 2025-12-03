@@ -109,7 +109,7 @@ export interface VisaDefinition {
   emoji: string; // Visual identifier
 
   // CATEGORIZATION
-  category: 'student' | 'worker' | 'visitor' | 'investor' | 'immigrant' | 'family' | 'special';
+  category: 'student' | 'worker' | 'visitor' | 'investor' | 'immigrant' | 'family' | 'special' | 'tourist';
   tier: 'start' | 'entry' | 'intermediate' | 'advanced';
 
   // DESCRIPTIONS
@@ -145,6 +145,16 @@ export interface VisaDefinition {
     label: string;
     url: string;
   }[];
+
+  // MAP POSITIONING & DIFFICULTY
+  /** Time horizon: "short" (~6mo-1yr), "medium" (1-3yr), "long" (3+ yr / permanent) */
+  timeHorizon: 'short' | 'medium' | 'long';
+  
+  /** Difficulty to obtain: 1=easy, 2=moderate, 3=hard */
+  difficulty: 1 | 2 | 3;
+  
+  /** Profile match score required (0-100) to be "recommended" */
+  requiredEligibilityScore: number;
 
   // METADATA
   notes: string; // Special considerations, exceptions, etc.
@@ -252,6 +262,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       },
     ],
     notes: 'F-1 students can work up to 20 hours/week on campus during school and full-time during breaks. After graduation, eligible for Optional Practical Training (OPT).',
+    timeHorizon: 'short',
+    difficulty: 1,
+    requiredEligibilityScore: 40,
   },
 
   j1: {
@@ -320,6 +333,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       },
     ],
     notes: 'Some J-1 visas have a two-year home country residency requirement. Check before applying.',
+    timeHorizon: 'short',
+    difficulty: 1,
+    requiredEligibilityScore: 40,
   },
 
   b2: {
@@ -373,6 +389,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       },
     ],
     notes: 'B-2 visa holders cannot work in the U.S. Maximum initial stay is 6 months.',
+    timeHorizon: 'short',
+    difficulty: 1,
+    requiredEligibilityScore: 30,
   },
 
   // ========================================================================
@@ -439,6 +458,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       },
     ],
     notes: 'STEM graduates can extend OPT to 36 months total. Multiple OPT periods allowed.',
+    timeHorizon: 'short',
+    difficulty: 1,
+    requiredEligibilityScore: 60,
   },
 
   h1b: {
@@ -515,6 +537,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       { label: 'USCIS H-1B Information', url: 'https://www.uscis.gov/h-1b' },
     ],
     notes: 'H-1B has annual cap (65,000 + 20,000 advanced degree exemption). Filing opens in March for October start. Lottery system used when applications exceed cap.',
+    timeHorizon: 'medium',
+    difficulty: 2,
+    requiredEligibilityScore: 70,
   },
 
   l1b: {
@@ -567,6 +592,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       { label: 'USCIS L-1 Information', url: 'https://www.uscis.gov/l-1' },
     ],
     notes: 'L-1B has no annual cap. Spouse can get L-2 and work with EAD. Valid for up to 7 years.',
+    timeHorizon: 'medium',
+    difficulty: 2,
+    requiredEligibilityScore: 65,
   },
 
   o1: {
@@ -613,6 +641,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       { label: 'USCIS O-1 Information', url: 'https://www.uscis.gov/o-1' },
     ],
     notes: 'No numerical limitations. Requires substantial evidence of extraordinary ability (not just national success).',
+    timeHorizon: 'long',
+    difficulty: 3,
+    requiredEligibilityScore: 80,
   },
 
   // ========================================================================
@@ -678,6 +709,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       { label: 'USCIS EB-5 Information', url: 'https://www.uscis.gov/eb-5' },
     ],
     notes: 'Requires significant capital and commitment. Processing times vary. Consider hiring immigration attorney.',
+    timeHorizon: 'long',
+    difficulty: 3,
+    requiredEligibilityScore: 90,
   },
 
   // ========================================================================
@@ -739,6 +773,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       { label: 'USCIS EB-2 Information', url: 'https://www.uscis.gov/eb-2' },
     ],
     notes: 'Currently retrogressed for most countries. Processing time varies significantly by country and preference category.',
+    timeHorizon: 'long',
+    difficulty: 2,
+    requiredEligibilityScore: 70,
   },
 
   eb1a: {
@@ -787,6 +824,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       { label: 'USCIS EB-1A Information', url: 'https://www.uscis.gov/eb-1' },
     ],
     notes: 'No labor certification required. No numerical limitations. Faster processing than other employment-based categories.',
+    timeHorizon: 'long',
+    difficulty: 3,
+    requiredEligibilityScore: 85,
   },
 
   eb1c: {
@@ -835,6 +875,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       { label: 'USCIS EB-1C Information', url: 'https://www.uscis.gov/eb-1' },
     ],
     notes: 'No labor certification required. No numerical limitations. Requires continuous 1-year employment abroad within 3 years preceding petition.',
+    timeHorizon: 'long',
+    difficulty: 2,
+    requiredEligibilityScore: 75,
   },
 
   // ========================================================================
@@ -901,6 +944,9 @@ export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
       { label: 'USCIS Naturalization', url: 'https://www.uscis.gov/naturalization' },
     ],
     notes: '3-year requirement available for those married to U.S. citizen. English test waived for those 50+ with 20 years residency or 55+ with 15 years residency.',
+    timeHorizon: 'long',
+    difficulty: 1,
+    requiredEligibilityScore: 50,
   },
 };
 
