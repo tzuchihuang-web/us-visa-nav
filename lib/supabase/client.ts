@@ -450,10 +450,23 @@ export async function saveOnboardingData(
 
     // Map onboarding visa status to profile
     // If user has a current visa, set it in user_profiles.current_visa
+    // IMPORTANT: Use normalizeVisaId to convert UI label (F-1) to knowledge base ID (f1)
     if (onboardingData.currentVisaStatus === 'has_visa' && onboardingData.currentVisa) {
-      // Normalize visa name to lowercase for consistency
-      updates.current_visa = onboardingData.currentVisa.toLowerCase();
-      console.info(`[Supabase] Mapped onboarding currentVisa to profile: ${onboardingData.currentVisa}`);
+      // Import normalizeVisaId at top of file if not already imported
+      // For now, create inline mapping to avoid circular dependencies
+      const visaMap: Record<string, string> = {
+        'F-1': 'f1', 'F1': 'f1', 'f-1': 'f1', 'f1': 'f1',
+        'OPT': 'opt', 'opt': 'opt',
+        'H-1B': 'h1b', 'H1B': 'h1b', 'h-1b': 'h1b', 'h1b': 'h1b',
+        'O-1': 'o1', 'O1': 'o1', 'o-1': 'o1', 'o1': 'o1',
+        'L-1': 'l1', 'L1': 'l1', 'l-1': 'l1', 'l1': 'l1',
+        'E-2': 'e2', 'E2': 'e2', 'e-2': 'e2', 'e2': 'e2',
+        'EB-1': 'eb1', 'EB1': 'eb1', 'eb-1': 'eb1', 'eb1': 'eb1',
+        'EB-2': 'eb2', 'EB2': 'eb2', 'eb-2': 'eb2', 'eb2': 'eb2',
+      };
+      const normalizedVisa = visaMap[onboardingData.currentVisa.trim()] || null;
+      updates.current_visa = normalizedVisa;
+      console.info(`[Supabase] Mapped onboarding currentVisa "${onboardingData.currentVisa}" to profile: "${normalizedVisa}"`);
     } else {
       // User has no current visa
       updates.current_visa = null;

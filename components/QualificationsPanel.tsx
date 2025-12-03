@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '@/lib/types';
-import { normalizeVisaId, idToUiLabel } from '@/lib/utils';
 
 interface QualificationsPanelProps {
   userProfile: UserProfile | null;
@@ -64,11 +63,9 @@ export function QualificationsPanel({
   const displayProfile = { ...userProfile, ...localChanges };
 
   const handleFieldChange = (field: keyof UserProfile, value: any) => {
-    // IMPORTANT: Normalize currentVisa to knowledge base ID format (f1, h1b, etc.)
-    if (field === 'currentVisa' && value) {
-      value = normalizeVisaId(value);
-      console.info('[QualificationsPanel] Normalized currentVisa to:', value);
-    }
+    // currentVisa now comes from dropdown with correct knowledge base ID (f1, h1b, etc.)
+    // No normalization needed since dropdown values are already in correct format
+    console.info(`[QualificationsPanel] Field changed: ${field} = ${value}`);
     setLocalChanges(prev => ({ ...prev, [field]: value }));
   };
 
@@ -138,15 +135,23 @@ export function QualificationsPanel({
           <label className="block text-xs font-semibold text-gray-700 mb-1">
             Current Visa Status
           </label>
-          <input
-            type="text"
-            value={idToUiLabel(displayProfile.currentVisa) || ''}
+          <select
+            value={displayProfile.currentVisa || ''}
             onChange={(e) => handleFieldChange('currentVisa', e.target.value || null)}
-            placeholder="e.g., F-1, H-1B"
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+          >
+            <option value="">None (select if no current visa)</option>
+            <option value="f1">F-1 Student Visa</option>
+            <option value="opt">OPT (Optional Practical Training)</option>
+            <option value="h1b">H-1B Work Visa</option>
+            <option value="o1">O-1 Extraordinary Ability</option>
+            <option value="l1">L-1 Intracompany Transfer</option>
+            <option value="e2">E-2 Investor Visa</option>
+            <option value="eb1">EB-1 Green Card</option>
+            <option value="eb2">EB-2 Green Card</option>
+          </select>
           <p className="text-xs text-gray-500 mt-1">
-            Leave blank if you don't have a current visa
+            Select your current U.S. visa type
           </p>
         </div>
 

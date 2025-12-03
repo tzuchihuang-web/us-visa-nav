@@ -43,7 +43,7 @@ import React, { useMemo } from 'react';
 import { VISA_KNOWLEDGE_BASE } from '@/lib/visa-knowledge-base';
 import { UserProfile } from '@/lib/types';
 import { getVisaRecommendations, getVisasByStatus } from '@/lib/visa-matching-engine';
-import { normalizeVisaId, idToUiLabel } from '@/lib/utils';
+import { idToUiLabel } from '@/lib/utils';
 
 interface VisaMapRedesignedProps {
   /** User profile from matching engine */
@@ -100,19 +100,20 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
     if (userProfile.currentVisa) {
       // User has visa: show that visa as starting point
       // But only if it's a work/long-term visa (not tourist)
-      // IMPORTANT: currentVisa is stored as normalized ID (f1, h1b, etc.)
-      const visaId = normalizeVisaId(userProfile.currentVisa);
-      const currentVisa = visaId ? VISA_KNOWLEDGE_BASE[visaId] : null;
+      // IMPORTANT: currentVisa is already in knowledge base format (f1, h1b, etc.) - no normalization needed
+      const visaId = userProfile.currentVisa;
+      const currentVisa = VISA_KNOWLEDGE_BASE[visaId];
       
-      console.info('[VisaMapRedesigned] User has currentVisa:', userProfile.currentVisa);
-      console.info('[VisaMapRedesigned] Normalized visa ID:', visaId);
+      console.info('[VisaMapRedesigned] Building visa tier structure. Current visa from profile:', visaId);
       console.info('[VisaMapRedesigned] Looking up visa in knowledge base:', visaId);
+      console.info('[VisaMapRedesigned] Found visa definition:', currentVisa ? `${currentVisa.name} (${currentVisa.category})` : 'NOT FOUND');
       
       if (currentVisa && INCLUDED_CATEGORIES.includes(currentVisa.category)) {
         console.info('[VisaMapRedesigned] ✓ Current visa is eligible (category:', currentVisa.category, '), showing as Level 0');
-        tiers.current = [visaId!];
+        tiers.current = [visaId];
       } else {
         console.warn('[VisaMapRedesigned] Current visa category not eligible or not found, showing START instead');
+        console.warn('[VisaMapRedesigned] Available visa IDs in knowledge base:', Object.keys(VISA_KNOWLEDGE_BASE).join(', '));
         tiers.current = ['start'];
       }
     } else {
@@ -132,9 +133,8 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
       }
 
       // Skip if this is the current visa (already at Level 0)
-      // IMPORTANT: currentVisa is normalized, so compare with normalized version
-      const normalizedCurrentVisa = normalizeVisaId(userProfile.currentVisa);
-      if (visaId === normalizedCurrentVisa) {
+      // IMPORTANT: currentVisa is already in knowledge base format, direct comparison
+      if (visaId === userProfile.currentVisa) {
         console.info('[VisaMapRedesigned] Skipping visa', visaId, '(already showing at Level 0 as current visa)');
         return;
       }
