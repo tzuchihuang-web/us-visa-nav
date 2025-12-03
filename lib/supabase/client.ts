@@ -456,7 +456,7 @@ export async function saveOnboardingData(
     if (onboardingData.currentVisaStatus === 'has_visa' && onboardingData.currentVisa) {
       // Comprehensive visa mapping for all onboarding visa types
       // Maps display names (F-1, H-1B, etc.) to internal knowledge base IDs (f1, h1b, etc.)
-      const visaMap: Record<string, string> = {
+      const visaMap: Record<string, string | null> = {
         // F-1 Student Visa
         'F-1': 'f1', 'F1': 'f1', 'f-1': 'f1', 'f1': 'f1',
         // J-1 Exchange Visitor
@@ -480,7 +480,7 @@ export async function saveOnboardingData(
         // Other
         'other': null,
       };
-      const normalizedVisa = visaMap[onboardingData.currentVisa.trim()] || null;
+      const normalizedVisa = visaMap[onboardingData.currentVisa.trim()] ?? null;
       updates.current_visa = normalizedVisa;
       console.info(`[Supabase] Mapped onboarding currentVisa "${onboardingData.currentVisa}" → current_visa: "${normalizedVisa}"`);
     } else {
