@@ -21,6 +21,7 @@
 
 import { useState, useMemo } from "react";
 import { visaKnowledgeBase, Visa } from "@/src/data/visaKnowledgeBase";
+import { UserProfile } from "@/lib/types";
 import { matchUserToVisas } from "@/src/logic/matchingEngine";
 import { VisaMatchResult } from "@/lib/types";
 import {
@@ -433,8 +434,17 @@ function VisaNodeElement({
   );
 }
 
-export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[] }) {
+export function VisaMap({
+  recommendedVisas = [],
+  userProfile: propsUserProfile,
+}: {
+  recommendedVisas?: string[];
+  userProfile?: UserProfile;
+}) {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+
+  // Use profile from props (loaded via hook) or fall back to default from mapData
+  const effectiveUserProfile = propsUserProfile || (userProfile as any);
 
   // LOAD VISA KNOWLEDGE BASE DATA
   // Filter out visas with category "other" - only show relevant visa categories
@@ -512,7 +522,7 @@ export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[]
   }, [visaNodes]);
 
   // DETERMINE STARTING POINT: User's current visa or "START" node
-  const currentVisa = userProfile.currentVisa;
+  const currentVisa = effectiveUserProfile.currentVisa;
   
   // Build list of visas to show:
   // - If user has current visa: show that + all reachable visas
@@ -557,8 +567,8 @@ export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[]
   const matchResults = useMemo(() => {
     // Convert VisaNodeUI back to Visa for matching engine
     const visasForMatching = filteredVisaKB;
-    return matchUserToVisas(userProfile as any, visasForMatching);
-  }, [userProfile, filteredVisaKB]);
+    return matchUserToVisas(effectiveUserProfile as any, visasForMatching);
+  }, [effectiveUserProfile, filteredVisaKB]);
 
   // ADD MATCH RESULTS TO VISIBLE VISA NODES
   // Map match results back to visa nodes for display

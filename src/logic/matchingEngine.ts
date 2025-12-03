@@ -180,10 +180,10 @@ function scoreVisaForUser(user: UserProfile, visa: Visa): VisaMatchResult {
   const experienceScore = evaluateExperienceFit(user, visa);
   totalScore += experienceScore * WEIGHTS.experienceFit;
   
-  if (user.workExperienceYears !== undefined) {
-    if (user.workExperienceYears < 1) {
+  if (user.yearsOfExperience !== undefined) {
+    if (user.yearsOfExperience < 1) {
       reasons.push("Limited work experience may restrict this option.");
-    } else if (user.workExperienceYears >= 3) {
+    } else if (user.yearsOfExperience >= 3) {
       reasons.push("Your work experience supports this visa path.");
     }
   }
@@ -200,7 +200,7 @@ function scoreVisaForUser(user: UserProfile, visa: Visa): VisaMatchResult {
   const languageScore = evaluateLanguageFit(user, visa);
   totalScore += languageScore * WEIGHTS.languageFit;
   
-  if (user.englishLevel === "fluent" || user.englishLevel === "advanced") {
+  if (user.englishProficiency >= 4) {
     reasons.push("Your English proficiency meets requirements.");
   }
 
@@ -349,8 +349,8 @@ function evaluateEducationFit(user: UserProfile, visa: Visa): number {
  * Evaluates if user's work experience matches visa requirements.
  * Returns 0-1 score.
  */
-function evaluateExperienceFit(user: UserProfile, visa: Visa): number {
-  const years = user.workExperienceYears || 0;
+function evaluateExperienceFit(user: UserProfile, visa: any): number {
+  const years = user.yearsOfExperience || 0;
 
   // Experience requirements by visa
   const experienceReq: Record<string, number> = {
@@ -387,8 +387,8 @@ function evaluateExperienceFit(user: UserProfile, visa: Visa): number {
  * Evaluates if user's investment capacity matches visa.
  * Returns 0-1 score.
  */
-function evaluateInvestmentFit(user: UserProfile, visa: Visa): number {
-  const amountUSD = user.investmentAmountUSD || 0;
+function evaluateInvestmentFit(user: UserProfile, visa: any): number {
+  const amountUSD = user.investmentAmount || 0;
 
   // Investment requirements by visa
   const investmentReq: Record<string, number> = {
@@ -419,8 +419,8 @@ function evaluateInvestmentFit(user: UserProfile, visa: Visa): number {
  * Evaluates if user's language meets visa requirements.
  * Returns 0-1 score.
  */
-function evaluateLanguageFit(user: UserProfile, visa: Visa): number {
-  const englishScore = englishToScore(user.englishLevel);
+function evaluateLanguageFit(user: UserProfile, visa: any): number {
+  const englishScore = user.englishProficiency;
 
   // Most visas require "intermediate" English minimum (score 60)
   const minimumRequired = 60;

@@ -1,0 +1,240 @@
+/**
+ * USER PROFILE API
+ * 
+ * Bridge between the application UserProfile type and Supabase persistence.
+ * 
+ * This module:
+ * - Loads user profile from Supabase database
+ * - Saves profile changes back to Supabase
+ * - Converts between database format and UserProfile type
+ * - Handles errors gracefully
+ */
+
+import { UserProfile } from "@/lib/types";
+import {
+  getUserProfile,
+  updateUserProfile as updateProfileInSupabase,
+  setCurrentVisa,
+} from "@/lib/supabase/client";
+
+// ============================================================================
+// TYPE MAPPING - SUPABASE <-> APPLICATION
+// ============================================================================
+// Maps between Supabase's database schema and our UserProfile type
+
+/**
+ * Database record format returned by Supabase
+ */
+interface SupabaseUserProfile {
+  id: string;
+  email: string;
+  current_visa?: string | null;
+  education_level?: string | null;
+  years_of_experience?: number | null;
+  field_of_work?: string | null;
+  country_of_citizenship?: string | null;
+  english_proficiency?: number | null;
+  investment_amount?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Converts Supabase record to application UserProfile type
+ */
+function fromSupabaseProfile(dbRecord: SupabaseUserProfile): UserProfile {
+  return {
+    id: dbRecord.id,
+    email: dbRecord.email,
+    currentVisa: dbRecord.current_visa || null,
+    educationLevel: (dbRecord.education_level as any) || 'other',
+    yearsOfExperience: dbRecord.years_of_experience || 0,
+    fieldOfWork: dbRecord.field_of_work || '',
+    countryOfCitizenship: dbRecord.country_of_citizenship || 'US',
+    englishProficiency: dbRecord.english_proficiency || 0,
+    investmentAmount: dbRecord.investment_amount || 0,
+  };
+}
+
+/**
+ * Converts application UserProfile to Supabase insert/update format
+ */
+function toSupabaseProfile(profile: UserProfile): Partial<SupabaseUserProfile> {
+  return {
+    current_visa: profile.currentVisa || null,
+    education_level: profile.educationLevel || null,
+    years_of_experience: profile.yearsOfExperience || null,
+    field_of_work: profile.fieldOfWork || null,
+    country_of_citizenship: profile.countryOfCitizenship || null,
+    english_proficiency: profile.englishProficiency || null,
+    investment_amount: profile.investmentAmount || null,
+  };
+}
+
+// ============================================================================
+// LOAD PROFILE FROM SUPABASE
+// ============================================================================
+
+/**
+ * Loads user profile from Supabase database
+ * 
+ * @param userId - The user's ID (typically from auth)
+ * @returns UserProfile or null if not found or error
+ * 
+ * Called from: useVisaNavigatorProfile hook on mount
+ */
+export async function loadUserProfileFromSupabase(
+  userId: string
+): Promise<UserProfile | null> {
+  if (!userId) {
+    console.warn("loadUserProfileFromSupabase: No userId provided");
+    return null;
+  }
+
+  try {
+    const dbRecord = (await getUserProfile(userId)) as
+      | SupabaseUserProfile
+      | null;
+
+    if (!dbRecord) {
+      console.info(
+        `[Supabase] Profile not found for user ${userId}, will use defaults`
+      );
+      return null;
+    }
+
+    const profile = fromSupabaseProfile(dbRecord);
+    console.info(`[Supabase] Loaded profile for ${userId}:`, profile);
+    return profile;
+  } catch (error) {
+    console.error("[Supabase] Error loading user profile:", error);
+    return null;
+  }
+}
+
+// ============================================================================
+// SAVE PROFILE TO SUPABASE
+// ============================================================================
+
+/**
+ * Saves user profile to Supabase database
+ * 
+ * @param userId - The user's ID
+ * @param profile - The UserProfile to save
+ * 
+ * Called from: Left panel components when user edits qualifications
+ * 
+ * Note: Debouncing should be handled by the caller to avoid excessive writes
+ */
+export async function saveUserProfileToSupabase(
+  userId: string,
+  profile: UserProfile
+): Promise<boolean> {
+  if (!userId || !profile) {
+    console.warn("saveUserProfileToSupabase: Missing userId or profile");
+    return false;
+  }
+
+  try {
+    const updates = toSupabaseProfile(profile);
+    const result = await updateProfileInSupabase(userId, updates as any);
+
+    if (result) {
+      console.info(`[Supabase] Profile saved for ${userId}`);
+      return true;
+    } else {
+      console.warn(`[Supabase] Profile update returned null for ${userId}`);
+      return false;
+    }
+  } catch (error) {
+    console.error("[Supabase] Error saving user profile:", error);
+    return false;
+  }
+}
+
+// ============================================================================
+// UPDATE SPECIFIC PROFILE FIELDS
+// ============================================================================
+
+/**
+ * Updates just the current visa field
+ * Useful for quick updates without modifying other fields
+ */
+export async function updateCurrentVisaInSupabase(
+  userId: string,
+  visaId: string | null
+): Promise<boolean> {
+  if (!userId) return false;
+
+  try {
+    if (visaId) {
+      await setCurrentVisa(userId, visaId);
+    } else {
+      // Clear current visa
+      await updateProfileInSupabase(userId, { current_visa: null } as any);
+    }
+    console.info(`[Supabase] Updated current visa for ${userId}: ${visaId}`);
+    return true;
+  } catch (error) {
+    console.error("[Supabase] Error updating current visa:", error);
+    return false;
+  }
+}
+
+/**
+ * Creates a default profile for a new user
+ */
+export async function initializeUserProfileInSupabase(
+  userId: string,
+  email: string
+): Promise<UserProfile | null> {
+  try {
+    const defaultProfile: SupabaseUserProfile = {
+      id: userId,
+      email,
+      current_visa: null,
+      education_level: null,
+      years_of_experience: null,
+      field_of_work: null,
+      country_of_citizenship: null,
+      english_proficiency: null,
+      investment_amount: null,
+    };
+
+    const result = await updateProfileInSupabase(
+      userId,
+      defaultProfile as any
+    );
+
+    if (result) {
+      console.info(`[Supabase] Initialized profile for new user ${userId}`);
+      return fromSupabaseProfile(result as SupabaseUserProfile);
+    }
+    return null;
+  } catch (error) {
+    console.error("[Supabase] Error initializing user profile:", error);
+    return null;
+  }
+}
+
+// ============================================================================
+// HELPER: CREATE DEFAULT PROFILE FOR LOCAL TESTING
+// ============================================================================
+
+/**
+ * Creates a default UserProfile for testing or local development
+ * Used when Supabase is unavailable or during initialization
+ */
+export function createDefaultUserProfile(userId: string, email?: string): UserProfile {
+  return {
+    id: userId,
+    email: email || `user-${userId}@visa-nav.local`,
+    currentVisa: null,
+    educationLevel: 'other',
+    yearsOfExperience: 0,
+    fieldOfWork: '',
+    countryOfCitizenship: 'US',
+    englishProficiency: 0,
+    investmentAmount: 0,
+  };
+}

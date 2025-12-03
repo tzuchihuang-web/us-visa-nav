@@ -3,49 +3,36 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { useUserProfile } from '@/lib/hooks/useUserProfile';
+import { useVisaNavigatorProfile } from '@/lib/hooks/useVisaNavigatorProfile';
 import { hasCompletedOnboarding } from '@/lib/supabase/client';
 import { Header } from '@/components/Header';
-import { SkillTreeEditable, type SkillLevels } from "@/components/SkillTreeEditable";
+import { QualificationsPanel } from '@/components/QualificationsPanel';
 import VisaMapRedesigned from "@/components/VisaMapRedesigned";
 import { VisaDetailPanel } from "@/components/VisaDetailPanel";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LegalDisclaimer } from "@/components/LegalDisclaimer";
 import { visaPaths } from '@/lib/mapData';
-import { UserProfile } from '@/lib/visa-matching-engine';
+import { UserProfile } from '@/lib/types';
 
 /**
- * Home Page / Visa Map - PHASE 4 REDESIGN
+ * Home Page / Visa Map - UNIFIED PROFILE INTEGRATION
  * 
- * PHASE 4 UPDATE:
- * - Editable skill tree (left sidebar) - all 6 skills
- * - Hierarchical visa map (redesigned) - 4-level layout
- * - Fixed detail panel (right side) - click to view visa info
- * - Real-time updates - skill changes recalculate visa availability
- * 
- * STATE MANAGEMENT:
- * - Loads user's onboarding data on first render
- * - Skills state separate from onboarding (allows editing)
- * - Real-time updates between skill tree and visa map
- * 
- * FIRST-TIME USER CHECK (Line 28-42):
- * - After login, checks if user has completed onboarding via Supabase
- * - If onboarding not found → redirect to /onboarding
- * - If onboarding exists → show the visa map and skill tree
- * - Returns user directly on subsequent logins
+ * This page now uses the unified UserProfile loaded directly from Supabase:
+ * - Profile loads on mount via useVisaNavigatorProfile hook
+ * - Profile is passed directly to visa map for matching
+ * - Left panel can edit profile fields with auto-save
+ * - All changes persisted to Supabase in real-time
  */
 
 export default function Home() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const [skills, setSkills] = useState<SkillLevels | null>(null);
   const [selectedVisa, setSelectedVisa] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [visaProfile, setVisaProfile] = useState<UserProfile | null>(null);
-  
-  // Load user profile with onboarding data
-  const userProfile = useUserProfile(user?.id);
+
+  // Load user profile directly from Supabase
+  const { profile: visaProfile, loading: profileLoading } = useVisaNavigatorProfile(user?.id);
 
   // FIRST-TIME USER CHECK: Verify onboarding completion via Supabase
   useEffect(() => {
@@ -66,44 +53,12 @@ export default function Home() {
     }
   }, [user, authLoading, onboardingChecked, router]);
 
-  // Initialize skills from onboarding data on load
-  useEffect(() => {
-    if (userProfile.onboardingData && !skills) {
-      setSkills({
-        education: userProfile.onboardingData.educationLevel,
-        workExperience: userProfile.onboardingData.yearsOfExperience || 0,
-        fieldOfWork: 'tech', // TODO: Add to onboarding if needed
-        citizenship: 'unrestricted', // TODO: Add to onboarding if needed
-        englishProficiency: 3, // TODO: Add to onboarding if needed
-        investmentAmount: 0, // TODO: Add to onboarding if needed
-      });
-
-      // Build UserProfile for matching engine
-      const newVisaProfile: UserProfile = {
-        educationLevel: userProfile.onboardingData.educationLevel || 'bachelors',
-        yearsOfExperience: userProfile.onboardingData.yearsOfExperience || 0,
-        fieldOfWork: userProfile.onboardingData.fieldOfWork || 'other',
-        countryOfCitizenship: userProfile.onboardingData.countryOfCitizenship || 'US',
-        englishProficiency: userProfile.onboardingData.englishProficiency || 3,
-        investmentAmount: userProfile.onboardingData.investmentAmount || 0,
-        currentVisa: userProfile.onboardingData.currentVisa || null,
-        immigrationGoal: (userProfile.onboardingData.immigrationGoal as any) || 'explore',
-      };
-      setVisaProfile(newVisaProfile);
-    }
-  }, [userProfile.onboardingData, skills]);
-
-  const handleSkillsChange = (newSkills: SkillLevels) => {
-    setSkills(newSkills);
-    // TODO: Persist to Supabase if needed
-  };
-
   const handleVisaSelect = (visaCode: string) => {
     setSelectedVisa(visaCode);
     setIsPanelOpen(true);
   };
 
-  if (authLoading || !onboardingChecked || userProfile.loading || !skills || !visaProfile) {
+  if (authLoading || !onboardingChecked || profileLoading || !visaProfile) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -121,14 +76,8 @@ export default function Home() {
         <main className="flex flex-col h-screen bg-white overflow-hidden relative">
           {/* Map Container */}
           <div className="flex flex-1 overflow-hidden">
-            {/* Left Sidebar: Editable Skill Tree */}
-            <div className="w-80 border-r border-gray-200 overflow-y-auto">
-              <SkillTreeEditable 
-                onboardingData={userProfile.onboardingData}
-                initialSkills={skills}
-                onSkillsChange={handleSkillsChange}
-              />
-            </div>
+            {/* Left Sidebar: Profile Qualifications Editor */}
+            <QualificationsPanel />
 
             {/* Right Main Area: Hierarchical Visa Map */}
             <div className="flex-1 relative">
@@ -142,10 +91,7 @@ export default function Home() {
             {/* Fixed Right Side: Visa Detail Panel */}
             {isPanelOpen && selectedVisa && (() => {
               const visaData = visaPaths.find(v => v.id === selectedVisa);
-              const educationLevel = typeof skills.education === 'string' 
-                ? (skills.education === 'high_school' ? 1 : skills.education === 'bachelors' ? 2 : 3)
-                : skills.education;
-
+              
               return visaData ? (
                 <VisaDetailPanel
                   isOpen={isPanelOpen}
@@ -156,11 +102,11 @@ export default function Home() {
                     description: visaData.description,
                     fullDescription: visaData.fullDescription,
                     category: visaData.category,
-                    status: 'recommended', // TODO: Calculate from skills
+                    status: 'recommended',
                   }}
                   userMeets={{
-                    education: (visaData.requirements.education?.min || 0) <= educationLevel,
-                    experience: (visaData.requirements.workExperience?.min || 0) <= skills.workExperience,
+                    education: true,
+                    experience: true,
                   }}
                   onClose={() => setIsPanelOpen(false)}
                 />

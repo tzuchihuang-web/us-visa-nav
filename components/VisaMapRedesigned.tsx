@@ -41,7 +41,8 @@
 
 import React, { useMemo } from 'react';
 import { VISA_KNOWLEDGE_BASE } from '@/lib/visa-knowledge-base';
-import { UserProfile, getVisaRecommendations, getVisasByStatus } from '@/lib/visa-matching-engine';
+import { UserProfile } from '@/lib/types';
+import { getVisaRecommendations, getVisasByStatus } from '@/lib/visa-matching-engine';
 
 interface VisaMapRedesignedProps {
   /** User profile from matching engine */

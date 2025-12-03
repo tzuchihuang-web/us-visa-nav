@@ -36,13 +36,12 @@ import {
   VisaEligibilityRule,
   getCitizenshipRestrictionCategory,
 } from './visa-knowledge-base';
+import { UserProfile } from './types';
 
 /**
- * User profile for matching
- * 
  * DATA OWNERSHIP NOTE:
- * This profile is the single source of truth and should be:
- * 1. Stored in Supabase user_profiles.onboarding_data (persisted)
+ * UserProfile is now the single source of truth:
+ * 1. Stored in Supabase user_profiles table
  * 2. Loaded into app state on component mount
  * 3. Passed to matching engine for real-time recalculation
  * 4. Updated when user edits qualifications or onboarding data
@@ -51,23 +50,6 @@ import {
  * - If null: User has no current visa, show START node
  * - If string (e.g., 'F-1'): User currently holds that visa, show it as Level 0
  */
-export interface UserProfile {
-  // Education & Qualifications
-  educationLevel: 'high_school' | 'bachelors' | 'masters' | 'phd' | 'other';
-  yearsOfExperience: number;
-  fieldOfWork: string; // e.g., 'tech', 'engineering', 'finance', 'healthcare'
-  englishProficiency: number; // 0-5 scale
-
-  // Immigration Status & Country
-  currentVisa: string | null; // e.g., 'F-1', 'H-1B', null for no visa
-  countryOfCitizenship: string; // ISO country code, e.g., 'IN', 'BR', 'CN'
-
-  // Financial
-  investmentAmount: number; // in USD
-
-  // Optional metadata
-  immigrationGoal?: 'study' | 'work' | 'visit' | 'invest' | 'immigrate_longterm';
-}
 
 export interface VisaEligibilityScore {
   visaId: string;
