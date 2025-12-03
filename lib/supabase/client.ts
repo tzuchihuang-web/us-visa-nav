@@ -448,44 +448,65 @@ export async function saveOnboardingData(
       updated_at: new Date().toISOString(),
     };
 
+    console.info('[Onboarding] Completing onboarding and mapping to UserProfile:', onboardingData);
+
     // Map onboarding visa status to profile
     // If user has a current visa, set it in user_profiles.current_visa
     // IMPORTANT: Use normalizeVisaId to convert UI label (F-1) to knowledge base ID (f1)
     if (onboardingData.currentVisaStatus === 'has_visa' && onboardingData.currentVisa) {
-      // Import normalizeVisaId at top of file if not already imported
-      // For now, create inline mapping to avoid circular dependencies
+      // Comprehensive visa mapping for all onboarding visa types
+      // Maps display names (F-1, H-1B, etc.) to internal knowledge base IDs (f1, h1b, etc.)
       const visaMap: Record<string, string> = {
+        // F-1 Student Visa
         'F-1': 'f1', 'F1': 'f1', 'f-1': 'f1', 'f1': 'f1',
-        'OPT': 'opt', 'opt': 'opt',
+        // J-1 Exchange Visitor
+        'J-1': 'j1', 'J1': 'j1', 'j-1': 'j1', 'j1': 'j1',
+        // B-1/B-2 Tourist/Business
+        'B-1/B-2': 'b1b2', 'B1/B2': 'b1b2', 'b-1/b-2': 'b1b2', 'b1b2': 'b1b2',
+        // H-1B Specialty Occupation
         'H-1B': 'h1b', 'H1B': 'h1b', 'h-1b': 'h1b', 'h1b': 'h1b',
+        // O-1 Extraordinary Ability
         'O-1': 'o1', 'O1': 'o1', 'o-1': 'o1', 'o1': 'o1',
+        // L-1 Intracompany Transfer
         'L-1': 'l1', 'L1': 'l1', 'l-1': 'l1', 'l1': 'l1',
+        // OPT (Optional Practical Training)
+        'OPT': 'opt', 'opt': 'opt',
+        // E-2 Investor
         'E-2': 'e2', 'E2': 'e2', 'e-2': 'e2', 'e2': 'e2',
+        // EB-1 Employment-Based Green Card
         'EB-1': 'eb1', 'EB1': 'eb1', 'eb-1': 'eb1', 'eb1': 'eb1',
+        // EB-2 Employment-Based Green Card
         'EB-2': 'eb2', 'EB2': 'eb2', 'eb-2': 'eb2', 'eb2': 'eb2',
+        // Other
+        'other': null,
       };
       const normalizedVisa = visaMap[onboardingData.currentVisa.trim()] || null;
       updates.current_visa = normalizedVisa;
-      console.info(`[Supabase] Mapped onboarding currentVisa "${onboardingData.currentVisa}" to profile: "${normalizedVisa}"`);
+      console.info(`[Supabase] Mapped onboarding currentVisa "${onboardingData.currentVisa}" → current_visa: "${normalizedVisa}"`);
     } else {
       // User has no current visa
       updates.current_visa = null;
-      console.info('[Supabase] User has no current visa (onboarding)');
+      console.info('[Supabase] User has no current visa (onboarding), setting current_visa = null');
     }
 
     // Map education level
     if (onboardingData.educationLevel) {
       updates.education_level = onboardingData.educationLevel;
-      console.info(`[Supabase] Mapped education level: ${onboardingData.educationLevel}`);
+      console.info(`[Supabase] Mapped onboarding educationLevel "${onboardingData.educationLevel}" → education_level: "${onboardingData.educationLevel}"`);
     }
 
     // Map years of experience
+    // CRITICAL FIX: Database column is work_experience_years, not years_of_experience
     if (onboardingData.yearsOfExperience !== undefined) {
-      updates.years_of_experience = onboardingData.yearsOfExperience;
-      console.info(`[Supabase] Mapped years of experience: ${onboardingData.yearsOfExperience}`);
+      updates.work_experience_years = onboardingData.yearsOfExperience;
+      console.info(`[Supabase] Mapped onboarding yearsOfExperience ${onboardingData.yearsOfExperience} → work_experience_years: ${onboardingData.yearsOfExperience}`);
     }
 
-    console.info('[Supabase] Saving onboarding data to user_profiles with mapped fields:', updates);
+    console.info('[Supabase] Saving onboarding results into user_profiles columns:', {
+      current_visa: updates.current_visa,
+      education_level: updates.education_level,
+      work_experience_years: updates.work_experience_years,
+    });
 
     const { error } = await client
       .from("user_profiles")
@@ -498,7 +519,7 @@ export async function saveOnboardingData(
       return true; // Still return true since localStorage worked
     }
 
-    console.info('[Supabase] Successfully saved onboarding data to user_profiles');
+    console.info(`[Supabase] Successfully updated user_profiles row for user ${userId}`);
     return true;
   } catch (err) {
     console.error("Error saving onboarding data:", err);
