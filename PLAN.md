@@ -1,25 +1,23 @@
 # Build Plan: us-visa-nav
 
-**Goal**: Build a working prototype of a U.S. Visa Navigation & Guidance Platform in 2 days.
+**Goal**: Build a working prototype of a U.S. Visa Navigation & Guidance Platform.
 
-**Approach**: Cut all non-essentials. Focus on 3 core flows: (1) Sign up/Login, (2) Visa exploration, (3) Application tracker. Mock data, no complex backend logic. Ship a working demo that impresses.
+**Approach**: Focus on 3 core flows: (1) Sign up/Login, (2) Visa exploration, (3) Application tracker. Use Supabase for authentication and data persistence. Ship a working demo that impresses.
 
 ---
 
-## 🔥 2-Day Sprint: Minimum Viable Prototype
+## 🔥 MVP Sprint: Minimum Viable Prototype
 
-**Timeline**: Day 1 (8 hours) + Day 2 (8 hours) = 16 hours total
-
-**Key Principle**: **Cut, cut, cut**. Remove everything that doesn't directly contribute to the demo. Use mock data. Skip tests, accessibility polish, deployment. Focus on:
+**Key Principle**: Focus on core functionality. Remove everything that doesn't directly contribute to the demo. Use Supabase for real data persistence. Skip tests, accessibility polish, complex features. Focus on:
 1. **Impressive visual design** (clean, professional UI)
 2. **Core user flows** (signup → explore → track)
 3. **Working functionality** (no dummy buttons)
 
 ---
 
-## Day 1: Setup & Core Pages (8 hours)
+## Phase 1: Setup & Core Pages
 
-### Hour 1-1.5: Initialize Next.js + Styling
+### Step 1: Initialize Next.js + Styling
 **What**: Create a new Next.js project with Tailwind and Shadcn/ui ready to go.
 
 **Commands**:
@@ -48,7 +46,7 @@ npx shadcn-ui@latest init
 
 ---
 
-### Hour 1.5-2.5: Create Core Folder Structure
+### Step 2: Create Core Folder Structure
 **What**: Organize your project
 
 **Folders**:
@@ -74,7 +72,7 @@ npx shadcn-ui@latest init
 
 ---
 
-### Hour 2.5-3.5: Build Header & Navigation
+### Step 3: Build Header & Navigation
 **What**: Create a simple header that appears on all pages
 
 **Component**: `/components/Header.tsx`
@@ -88,7 +86,7 @@ npx shadcn-ui@latest init
 
 ---
 
-### Hour 3.5-4.5: Build Home Page
+### Step 4: Build Home Page
 **What**: Landing page users see after login
 
 **Page**: `/app/page.tsx`
@@ -107,7 +105,7 @@ npx shadcn-ui@latest init
 
 ---
 
-### Hour 4.5-5.5: Build Auth Pages (Real Supabase)
+### Step 5: Build Auth Pages (Real Supabase)
 **What**: Signup & login pages with **real Supabase authentication**
 
 **Pages**:
@@ -133,7 +131,7 @@ const { signUp, signIn, user } = useSupabaseAuth();
 
 ---
 
-### Hour 5.5-6.5: Create Mock Visa Data & Supabase Types
+### Step 6: Create Mock Visa Data & Supabase Types
 **What**: Hardcoded visa data + setup Supabase tables for user data
 
 **File**: `/lib/mockData.ts` - Visa catalog (doesn't change)
@@ -166,7 +164,7 @@ export const VISA_DATA = [
 
 ---
 
-### Hour 6.5-7.5: Build Visa Explorer Page
+### Step 7: Build Visa Explorer Page
 **What**: Show visa options as cards
 
 **Page**: `/app/explore/page.tsx`
@@ -186,7 +184,7 @@ export const VISA_DATA = [
 
 ---
 
-### Hour 7.5-8: Commit & Test
+### Step 8: Commit & Test
 **What**: Make sure everything works locally
 
 **Commands**:
@@ -209,10 +207,9 @@ git commit -m "Day 1: MVP setup - auth pages, home, visa explorer with mock data
 **Time**: 15 minutes
 
 ---
+## Phase 2: Polish & Tracker
 
-## Day 2: Polish & Tracker (8 hours)
-
-### Hour 9-10: Build Application Tracker Page
+### Step 9: Build Application Tracker Page
 **What**: Show user's progress on visa application
 
 **Page**: `/app/tracker/page.tsx`
@@ -235,7 +232,7 @@ git commit -m "Day 1: MVP setup - auth pages, home, visa explorer with mock data
 
 ---
 
-### Hour 10-11: Add Visa Detail Modal/Page
+### Step 10: Add Visa Detail Modal/Page
 **What**: Click "Learn More" on a visa card to see details
 
 **Option A** (Easier): Modal popup showing full visa info
@@ -255,7 +252,7 @@ git commit -m "Day 1: MVP setup - auth pages, home, visa explorer with mock data
 
 ---
 
-### Hour 11-12: Add Profile Page (Mock)
+### Step 11: Add Profile Page
 **What**: Show user's saved profile
 
 **Page**: `/app/profile/page.tsx`
@@ -273,7 +270,7 @@ git commit -m "Day 1: MVP setup - auth pages, home, visa explorer with mock data
 
 ---
 
-### Hour 12-13: Add Eagle Mascot & Branding
+### Step 12: Add Eagle Mascot & Branding
 **What**: Make it fun! Add visual personality
 
 **What to Do**:
@@ -289,7 +286,7 @@ git commit -m "Day 1: MVP setup - auth pages, home, visa explorer with mock data
 
 ---
 
-### Hour 13-14: Polish UI & Responsive Design
+### Step 13: Polish UI & Responsive Design
 **What**: Make sure it looks good on desktop AND mobile
 
 **Checks**:
@@ -307,7 +304,7 @@ git commit -m "Day 1: MVP setup - auth pages, home, visa explorer with mock data
 
 ---
 
-### Hour 14-15: Add Navigation & Links
+### Step 14: Add Navigation & Links
 **What**: Make sure you can move between all pages
 
 **Navigation**:
@@ -322,7 +319,7 @@ git commit -m "Day 1: MVP setup - auth pages, home, visa explorer with mock data
 
 ---
 
-### Hour 15-16: Final Polish & Deploy to Vercel
+### Step 15: Final Polish & Deploy to Vercel
 **What**: Ship the prototype live
 
 **Local Tests**:
@@ -411,7 +408,7 @@ git push origin main
 
 ## Success Criteria
 
-After 2 days, you can answer "YES" to:
+After completing the sprint, you can answer "YES" to:
 
 - [ ] App runs locally without errors (`npm run dev` works)
 - [ ] App is deployed to a public URL
@@ -425,7 +422,7 @@ After 2 days, you can answer "YES" to:
 
 ---
 
-## Next Steps (After 2-Day Sprint)
+## Next Steps (After Sprint Completion)
 
 Once you show this prototype and get feedback:
 
@@ -452,7 +449,7 @@ After the 2-day sprint, refer to the **original multi-phase plan** in `/docs/TEC
 
 ## Go Time! 🚀
 
-You have 2 days to build an impressive prototype. 
+Now let's build an impressive prototype. 
 
-**Let's get started!** ⏰
+**Let's get started!** 🚀
 
