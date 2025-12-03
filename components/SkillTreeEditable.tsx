@@ -6,12 +6,19 @@
  * - Syncs with onboarding data on first load
  * - Becomes single source of truth for user qualifications
  * - Real-time updates trigger visa map recalculation
+ * 
+ * PHASE 4 UPDATE:
+ * - Refactored to use UserProfile fields instead of SkillLevels
+ * - countryOfCitizenship uses ISO country codes (not categories)
+ * - fieldOfWork, englishProficiency, investmentAmount now editable
+ * - Each field change triggers recalculation of visa recommendations
  */
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { OnboardingData, ONBOARDING_OPTIONS } from '@/lib/types/onboarding';
+import { searchCountries } from '@/lib/countries';
 
 export interface SkillLevels {
   education: string;
@@ -32,7 +39,7 @@ const DEFAULT_SKILLS: SkillLevels = {
   education: 'bachelors',
   workExperience: 2,
   fieldOfWork: 'tech',
-  citizenship: 'unrestricted',
+  citizenship: 'US', // Now ISO country code instead of category
   englishProficiency: 3,
   investmentAmount: 0,
 };
@@ -49,15 +56,19 @@ export function SkillTreeEditable({
       return {
         education: onboardingData.educationLevel,
         workExperience: onboardingData.yearsOfExperience,
-        fieldOfWork: 'tech',
-        citizenship: 'unrestricted',
-        englishProficiency: 3,
-        investmentAmount: 0,
+        fieldOfWork: onboardingData.fieldOfWork || 'tech',
+        citizenship: onboardingData.countryOfCitizenship || 'US', // ISO country code
+        englishProficiency: onboardingData.englishProficiency || 3,
+        investmentAmount: onboardingData.investmentAmount || 0,
       };
     }
 
     return base;
   });
+
+  const [countrySearch, setCountrySearch] = useState('');
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const countrySearchResults = countrySearch.trim() ? searchCountries(countrySearch) : [];
 
   useEffect(() => {
     onSkillsChange(skills);
@@ -178,20 +189,41 @@ export function SkillTreeEditable({
           </select>
         </div>
 
-        {/* Citizenship */}
+        {/* Citizenship - Country Selector */}
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-2">
-            🌍 Citizenship Status
+            🌍 Country of Citizenship
           </label>
-          <select
-            value={skills.citizenship}
-            onChange={(e) => handleCitizenshipChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="unrestricted">Unrestricted (Western countries)</option>
-            <option value="restricted">Restricted countries</option>
-            <option value="us_national">U.S. National</option>
-          </select>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search country..."
+              value={countrySearch}
+              onChange={(e) => setCountrySearch(e.target.value)}
+              onFocus={() => setShowCountryDropdown(true)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {showCountryDropdown && countrySearchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
+                {countrySearchResults.map((country) => (
+                  <button
+                    key={country.code}
+                    onClick={() => {
+                      handleCitizenshipChange(country.code);
+                      setCountrySearch('');
+                      setShowCountryDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm text-gray-700 border-b border-gray-100 last:border-b-0"
+                  >
+                    {country.name} ({country.code})
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-700">
+              Selected: <strong>{skills.citizenship}</strong>
+            </div>
+          </div>
         </div>
 
         {/* English Proficiency */}

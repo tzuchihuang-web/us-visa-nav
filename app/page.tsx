@@ -10,6 +10,7 @@ import { SkillTreeEditable, type SkillLevels } from "@/components/SkillTreeEdita
 import VisaMapRedesigned from "@/components/VisaMapRedesigned";
 import { VisaDetailPanel } from "@/components/VisaDetailPanel";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { LegalDisclaimer } from "@/components/LegalDisclaimer";
 import { visaPaths } from '@/lib/mapData';
 import { UserProfile } from '@/lib/visa-matching-engine';
 
@@ -117,52 +118,58 @@ export default function Home() {
     <ProtectedRoute>
       <>
         <Header />
-        <main className="flex h-screen bg-white overflow-hidden relative">
-          {/* Left Sidebar: Editable Skill Tree */}
-          <div className="w-80 border-r border-gray-200 overflow-y-auto">
-            <SkillTreeEditable 
-              onboardingData={userProfile.onboardingData}
-              initialSkills={skills}
-              onSkillsChange={handleSkillsChange}
-            />
-          </div>
-
-          {/* Right Main Area: Hierarchical Visa Map */}
-          <div className="flex-1 relative">
-            <VisaMapRedesigned 
-              userProfile={visaProfile}
-              selectedVisa={selectedVisa}
-              onVisaSelect={handleVisaSelect}
-            />
-          </div>
-
-          {/* Fixed Right Side: Visa Detail Panel */}
-          {isPanelOpen && selectedVisa && (() => {
-            const visaData = visaPaths.find(v => v.id === selectedVisa);
-            const educationLevel = typeof skills.education === 'string' 
-              ? (skills.education === 'high_school' ? 1 : skills.education === 'bachelors' ? 2 : 3)
-              : skills.education;
-
-            return visaData ? (
-              <VisaDetailPanel
-                isOpen={isPanelOpen}
-                visa={{
-                  id: visaData.id,
-                  name: visaData.name,
-                  emoji: visaData.emoji,
-                  description: visaData.description,
-                  fullDescription: visaData.fullDescription,
-                  category: visaData.category,
-                  status: 'recommended', // TODO: Calculate from skills
-                }}
-                userMeets={{
-                  education: (visaData.requirements.education?.min || 0) <= educationLevel,
-                  experience: (visaData.requirements.workExperience?.min || 0) <= skills.workExperience,
-                }}
-                onClose={() => setIsPanelOpen(false)}
+        <main className="flex flex-col h-screen bg-white overflow-hidden relative">
+          {/* Map Container */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Left Sidebar: Editable Skill Tree */}
+            <div className="w-80 border-r border-gray-200 overflow-y-auto">
+              <SkillTreeEditable 
+                onboardingData={userProfile.onboardingData}
+                initialSkills={skills}
+                onSkillsChange={handleSkillsChange}
               />
-            ) : null;
-          })()}
+            </div>
+
+            {/* Right Main Area: Hierarchical Visa Map */}
+            <div className="flex-1 relative">
+              <VisaMapRedesigned 
+                userProfile={visaProfile}
+                selectedVisa={selectedVisa}
+                onVisaSelect={handleVisaSelect}
+              />
+            </div>
+
+            {/* Fixed Right Side: Visa Detail Panel */}
+            {isPanelOpen && selectedVisa && (() => {
+              const visaData = visaPaths.find(v => v.id === selectedVisa);
+              const educationLevel = typeof skills.education === 'string' 
+                ? (skills.education === 'high_school' ? 1 : skills.education === 'bachelors' ? 2 : 3)
+                : skills.education;
+
+              return visaData ? (
+                <VisaDetailPanel
+                  isOpen={isPanelOpen}
+                  visa={{
+                    id: visaData.id,
+                    name: visaData.name,
+                    emoji: visaData.emoji,
+                    description: visaData.description,
+                    fullDescription: visaData.fullDescription,
+                    category: visaData.category,
+                    status: 'recommended', // TODO: Calculate from skills
+                  }}
+                  userMeets={{
+                    education: (visaData.requirements.education?.min || 0) <= educationLevel,
+                    experience: (visaData.requirements.workExperience?.min || 0) <= skills.workExperience,
+                  }}
+                  onClose={() => setIsPanelOpen(false)}
+                />
+              ) : null;
+            })()}
+          </div>
+
+          {/* Legal Disclaimer Footer */}
+          <LegalDisclaimer />
         </main>
       </>
     </ProtectedRoute>
