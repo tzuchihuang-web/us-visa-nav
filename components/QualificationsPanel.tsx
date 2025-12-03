@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '@/lib/types';
+import { normalizeVisaId, idToUiLabel } from '@/lib/utils';
 
 interface QualificationsPanelProps {
   userProfile: UserProfile | null;
@@ -21,6 +22,7 @@ interface QualificationsPanelProps {
  * - Shows success message after save
  * - Error handling with user feedback
  * - Props-based integration (not self-contained)
+ * - IMPORTANT: Normalizes currentVisa to knowledge base IDs (f1, h1b, etc.)
  */
 
 export function QualificationsPanel({
@@ -62,6 +64,11 @@ export function QualificationsPanel({
   const displayProfile = { ...userProfile, ...localChanges };
 
   const handleFieldChange = (field: keyof UserProfile, value: any) => {
+    // IMPORTANT: Normalize currentVisa to knowledge base ID format (f1, h1b, etc.)
+    if (field === 'currentVisa' && value) {
+      value = normalizeVisaId(value);
+      console.info('[QualificationsPanel] Normalized currentVisa to:', value);
+    }
     setLocalChanges(prev => ({ ...prev, [field]: value }));
   };
 
@@ -133,7 +140,7 @@ export function QualificationsPanel({
           </label>
           <input
             type="text"
-            value={displayProfile.currentVisa || ''}
+            value={idToUiLabel(displayProfile.currentVisa) || ''}
             onChange={(e) => handleFieldChange('currentVisa', e.target.value || null)}
             placeholder="e.g., F-1, H-1B"
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"

@@ -24,16 +24,17 @@ import {
 
 /**
  * Database record format returned by Supabase
+ * IMPORTANT: These are the ACTUAL column names in the user_profiles table
  */
 interface SupabaseUserProfile {
   id: string;
   email: string;
   current_visa?: string | null;
   education_level?: string | null;
-  years_of_experience?: number | null;
+  work_experience_years?: number | null;  // NOT years_of_experience
   field_of_work?: string | null;
   country_of_citizenship?: string | null;
-  english_proficiency?: number | null;
+  english_level?: string | null;           // NOT english_proficiency
   investment_amount?: number | null;
   created_at?: string;
   updated_at?: string;
@@ -41,32 +42,58 @@ interface SupabaseUserProfile {
 
 /**
  * Converts Supabase record to application UserProfile type
+ * Maps database column names to application field names
  */
 function fromSupabaseProfile(dbRecord: SupabaseUserProfile): UserProfile {
+  // Map english_level (TEXT) back to englishProficiency (number 0-5)
+  let englishProficiency = 0;
+  if (dbRecord.english_level) {
+    switch (dbRecord.english_level.toLowerCase()) {
+      case 'basic': englishProficiency = 1; break;
+      case 'intermediate': englishProficiency = 2; break;
+      case 'advanced': englishProficiency = 3; break;
+      case 'fluent': englishProficiency = 4; break;
+      default: englishProficiency = 0;
+    }
+  }
+
   return {
     id: dbRecord.id,
     email: dbRecord.email,
     currentVisa: dbRecord.current_visa || null,
     educationLevel: (dbRecord.education_level as any) || 'other',
-    yearsOfExperience: dbRecord.years_of_experience || 0,
+    yearsOfExperience: dbRecord.work_experience_years || 0,
     fieldOfWork: dbRecord.field_of_work || '',
     countryOfCitizenship: dbRecord.country_of_citizenship || 'US',
-    englishProficiency: dbRecord.english_proficiency || 0,
+    englishProficiency: englishProficiency,
     investmentAmount: dbRecord.investment_amount || 0,
   };
 }
 
 /**
  * Converts application UserProfile to Supabase insert/update format
+ * 
+ * IMPORTANT: Maps application field names to database column names:
+ * - englishProficiency (0-5) → english_level (TEXT: 'basic'/'intermediate'/'advanced'/'fluent')
+ * - yearsOfExperience (number) → work_experience_years (INTEGER)
  */
 function toSupabaseProfile(profile: UserProfile): Partial<SupabaseUserProfile> {
+  // Map English proficiency number (0-5) to text level
+  let englishLevel: string | null = null;
+  if (profile.englishProficiency) {
+    if (profile.englishProficiency <= 1) englishLevel = 'basic';
+    else if (profile.englishProficiency === 2) englishLevel = 'intermediate';
+    else if (profile.englishProficiency === 3) englishLevel = 'advanced';
+    else if (profile.englishProficiency >= 4) englishLevel = 'fluent';
+  }
+
   return {
     current_visa: profile.currentVisa || null,
     education_level: profile.educationLevel || null,
-    years_of_experience: profile.yearsOfExperience || null,
+    work_experience_years: profile.yearsOfExperience || null, // Map to work_experience_years, NOT years_of_experience
     field_of_work: profile.fieldOfWork || null,
     country_of_citizenship: profile.countryOfCitizenship || null,
-    english_proficiency: profile.englishProficiency || null,
+    english_level: englishLevel, // Map to english_level, NOT english_proficiency
     investment_amount: profile.investmentAmount || null,
   };
 }
@@ -202,10 +229,10 @@ export async function initializeUserProfileInSupabase(
       email,
       current_visa: null,
       education_level: null,
-      years_of_experience: null,
+      work_experience_years: null,
       field_of_work: null,
       country_of_citizenship: null,
-      english_proficiency: null,
+      english_level: null,
       investment_amount: null,
     };
 

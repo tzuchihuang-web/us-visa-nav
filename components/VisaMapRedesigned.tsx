@@ -22,7 +22,7 @@
  * 
  * STARTING POINT LOGIC:
  * - If userProfile.currentVisa is NULL: Show START node at Level 0
- * - If userProfile.currentVisa is "F-1": Show F-1 visa as Level 0 with highlight
+ * - If userProfile.currentVisa is "f1": Show F-1 visa as Level 0 with highlight
  * - Level 0 visa node is larger, glowing, labeled "You are here (Current visa: F-1)"
  * 
  * MAP LAYOUT:
@@ -43,6 +43,7 @@ import React, { useMemo } from 'react';
 import { VISA_KNOWLEDGE_BASE } from '@/lib/visa-knowledge-base';
 import { UserProfile } from '@/lib/types';
 import { getVisaRecommendations, getVisasByStatus } from '@/lib/visa-matching-engine';
+import { normalizeVisaId, idToUiLabel } from '@/lib/utils';
 
 interface VisaMapRedesignedProps {
   /** User profile from matching engine */
@@ -99,15 +100,17 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
     if (userProfile.currentVisa) {
       // User has visa: show that visa as starting point
       // But only if it's a work/long-term visa (not tourist)
-      const visaIdLower = userProfile.currentVisa.toLowerCase();
-      const currentVisa = VISA_KNOWLEDGE_BASE[visaIdLower];
+      // IMPORTANT: currentVisa is stored as normalized ID (f1, h1b, etc.)
+      const visaId = normalizeVisaId(userProfile.currentVisa);
+      const currentVisa = visaId ? VISA_KNOWLEDGE_BASE[visaId] : null;
       
       console.info('[VisaMapRedesigned] User has currentVisa:', userProfile.currentVisa);
-      console.info('[VisaMapRedesigned] Looking up visa in knowledge base:', visaIdLower);
+      console.info('[VisaMapRedesigned] Normalized visa ID:', visaId);
+      console.info('[VisaMapRedesigned] Looking up visa in knowledge base:', visaId);
       
       if (currentVisa && INCLUDED_CATEGORIES.includes(currentVisa.category)) {
         console.info('[VisaMapRedesigned] ✓ Current visa is eligible (category:', currentVisa.category, '), showing as Level 0');
-        tiers.current = [visaIdLower];
+        tiers.current = [visaId!];
       } else {
         console.warn('[VisaMapRedesigned] Current visa category not eligible or not found, showing START instead');
         tiers.current = ['start'];
@@ -129,7 +132,9 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
       }
 
       // Skip if this is the current visa (already at Level 0)
-      if (visaId === userProfile.currentVisa?.toLowerCase()) {
+      // IMPORTANT: currentVisa is normalized, so compare with normalized version
+      const normalizedCurrentVisa = normalizeVisaId(userProfile.currentVisa);
+      if (visaId === normalizedCurrentVisa) {
         console.info('[VisaMapRedesigned] Skipping visa', visaId, '(already showing at Level 0 as current visa)');
         return;
       }

@@ -7,6 +7,10 @@
  * - Used by the matching engine for scoring
  * - Used by the left panel for editing
  * 
+ * IMPORTANT STATE MANAGEMENT:
+ * - profile: Current profile state
+ * - updates: Tracked separately to avoid closure issues with async save
+ * 
  * Flow:
  * 1. On mount, attempts to load from Supabase
  * 2. If not found, initializes with defaults
@@ -16,7 +20,7 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { UserProfile } from '@/lib/types';
 import {
   loadUserProfileFromSupabase,
@@ -56,8 +60,10 @@ export function useVisaNavigatorProfile(
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pendingChanges, setPendingChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Use ref to track current profile to avoid stale closure in saveProfile
+  const profileRef = useRef<UserProfile | null>(null);
 
   // ========================================================================
   // LOAD PROFILE FROM SUPABASE ON MOUNT
@@ -82,18 +88,22 @@ export function useVisaNavigatorProfile(
         if (loadedProfile) {
           console.info('[UseVisaNavigatorProfile] ✓ Profile loaded from Supabase:', loadedProfile);
           setProfile(loadedProfile);
+          profileRef.current = loadedProfile;
         } else {
           // Initialize with defaults if not found
           console.info('[UseVisaNavigatorProfile] No profile found in Supabase, using defaults');
           const defaultProfile = createDefaultUserProfile(userId);
           setProfile(defaultProfile);
+          profileRef.current = defaultProfile;
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error('[UseVisaNavigatorProfile] Error loading profile:', message);
         setError(message);
         // Fall back to default profile even on error
-        setProfile(createDefaultUserProfile(userId));
+        const defaultProfile = createDefaultUserProfile(userId);
+        setProfile(defaultProfile);
+        profileRef.current = defaultProfile;
       } finally {
         setLoading(false);
       }
@@ -107,16 +117,16 @@ export function useVisaNavigatorProfile(
   // ========================================================================
   const updateProfile = useCallback(
     async (updates: Partial<UserProfile>): Promise<boolean> => {
-      if (!profile || !userId) {
+      if (!profileRef.current || !userId) {
         console.warn('[Profile Hook] Cannot update: missing profile or userId');
         return false;
       }
 
       try {
         // Update local state immediately for responsive UI
-        const updatedProfile = { ...profile, ...updates };
+        const updatedProfile = { ...profileRef.current, ...updates };
         setProfile(updatedProfile);
-        setPendingChanges(true);
+        profileRef.current = updatedProfile;  // IMPORTANT: Update ref immediately
         console.info('[Profile Hook] Profile updated locally:', updates);
         return true;
       } catch (err) {
@@ -126,32 +136,27 @@ export function useVisaNavigatorProfile(
         return false;
       }
     },
-    [profile, userId]
+    [userId]
   );
 
   // ========================================================================
   // SAVE PROFILE TO SUPABASE
   // ========================================================================
   const saveProfile = useCallback(async (): Promise<boolean> => {
-    if (!profile || !userId) {
+    if (!profileRef.current || !userId) {
       console.warn('[UseVisaNavigatorProfile] Cannot save: missing profile or userId');
       return false;
-    }
-
-    if (!pendingChanges) {
-      console.info('[UseVisaNavigatorProfile] No pending changes to save');
-      return true;
     }
 
     setIsSaving(true);
     try {
       console.info('[UseVisaNavigatorProfile] Starting profile save to Supabase...');
-      console.info('[UseVisaNavigatorProfile] Profile data to save:', profile);
+      // Use ref to get current profile, not state (which may be stale due to closure)
+      console.info('[UseVisaNavigatorProfile] Profile data to save:', profileRef.current);
       
-      const success = await saveUserProfileToSupabase(userId, profile);
+      const success = await saveUserProfileToSupabase(userId, profileRef.current);
 
       if (success) {
-        setPendingChanges(false);
         setError(null);
         console.info('[UseVisaNavigatorProfile] ✓ Profile saved successfully to Supabase');
         return true;
@@ -169,7 +174,7 @@ export function useVisaNavigatorProfile(
     } finally {
       setIsSaving(false);
     }
-  }, [profile, userId, pendingChanges]);
+  }, [userId]);
 
   return {
     profile,
