@@ -11,8 +11,8 @@ import VisaMapRedesigned from "@/components/VisaMapRedesigned";
 import { VisaDetailPanel } from "@/components/VisaDetailPanel";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LegalDisclaimer } from "@/components/LegalDisclaimer";
-import { VISA_KNOWLEDGE_BASE, Visa } from '@/src/data/visaKnowledgeBase';
-import { getVisaRecommendations } from '@/lib/visa-matching-engine';
+import { VISA_KNOWLEDGE_BASE, VisaDefinition, getVisaById } from '@/lib/visa-knowledge-base';
+import { getVisaRecommendations, getVisaRequirementStatus } from '@/lib/visa-matching-engine';
 import { UserProfile } from '@/lib/types';
 
 /**
@@ -55,11 +55,12 @@ export default function Home() {
     }
   }, [visaProfile]);
 
-  // Create visaById lookup from VISA_KNOWLEDGE_BASE
+  // VISA_KNOWLEDGE_BASE is already a Record<string, VisaDefinition>
+  // Convert to Map for easier lookup
   const visaById = useMemo(() => {
-    const map = new Map<string, Visa>();
-    VISA_KNOWLEDGE_BASE.forEach((visa) => {
-      map.set(visa.id.toLowerCase(), visa);
+    const map = new Map<string, VisaDefinition>();
+    Object.entries(VISA_KNOWLEDGE_BASE).forEach(([id, visa]) => {
+      map.set(id.toLowerCase(), visa);
     });
     return map;
   }, []);
@@ -70,9 +71,9 @@ export default function Home() {
     [visaProfile]
   );
 
-  // Derive selected visa from visaKnowledgeBase
+  // Derive selected visa from visaKnowledgeBase with requirement status
   const selectedVisaData = useMemo(() => {
-    if (!selectedVisa) return null;
+    if (!selectedVisa || !visaProfile) return null;
     const visa = visaById.get(selectedVisa.toLowerCase());
     if (!visa) return null;
 
@@ -80,12 +81,16 @@ export default function Home() {
     const matchResult = visaRecommendations[visa.id];
     const status = matchResult?.status || 'locked';
 
+    // Get detailed requirement status using new helper
+    const requirementStatus = getVisaRequirementStatus(visa.id, visaProfile);
+
     return {
       visa,
       status,
       matchResult,
+      requirementStatus,
     };
-  }, [selectedVisa, visaById, visaRecommendations]);
+  }, [selectedVisa, visaById, visaRecommendations, visaProfile]);
 
   // FIRST-TIME USER CHECK: Verify onboarding completion via Supabase
   useEffect(() => {
@@ -163,37 +168,66 @@ export default function Home() {
             </div>
 
             {/* Fixed Right Side: Visa Detail Panel */}
-            {isPanelOpen && selectedVisaData && (
+            {isPanelOpen && selectedVisaData && selectedVisaData.requirementStatus && (
               <VisaDetailPanel
                 isOpen={isPanelOpen}
                 visa={{
                   id: selectedVisaData.visa.id,
                   name: selectedVisaData.visa.name,
-                  emoji: selectedVisaData.visa.iconEmoji || '📄',
-                  description: selectedVisaData.visa.officialDescription,
+                  emoji: selectedVisaData.visa.emoji || '📄',
+                  description: selectedVisaData.visa.shortDescription,
                   fullDescription: selectedVisaData.visa.officialDescription,
                   category: selectedVisaData.visa.category,
                   status: selectedVisaData.status,
                   timeHorizon: selectedVisaData.visa.timeHorizon,
-                  difficulty: selectedVisaData.visa.difficulty 
-                    ? (selectedVisaData.visa.difficulty === 'low' ? 1 : selectedVisaData.visa.difficulty === 'medium' ? 2 : 3)
-                    : undefined,
+                  difficulty: selectedVisaData.visa.difficulty,
                   requirements: {
-                    education: selectedVisaData.visa.eligibilityCriteria
-                      .filter(c => c.toLowerCase().includes('education') || c.toLowerCase().includes('degree'))
-                      .join(', ') || 'See eligibility criteria',
-                    experience: selectedVisaData.visa.eligibilityCriteria
-                      .filter(c => c.toLowerCase().includes('experience') || c.toLowerCase().includes('year'))
-                      .join(', ') || 'See eligibility criteria',
+                    // Generate human-readable descriptions from eligibility rules
+                    education: selectedVisaData.requirementStatus.educationMet !== null
+                      ? selectedVisaData.visa.eligibilityRules
+                          .filter(r => r.field === 'educationLevel')
+                          .map(r => r.description)
+                          .join('. ') || "Bachelor's degree or equivalent"
+                      : undefined,
+                    experience: selectedVisaData.requirementStatus.experienceMet !== null
+                      ? selectedVisaData.visa.eligibilityRules
+                          .filter(r => r.field === 'yearsOfExperience')
+                          .map(r => r.description)
+                          .join('. ') || 'Work experience required'
+                      : undefined,
+                    english: selectedVisaData.requirementStatus.englishMet !== null
+                      ? selectedVisaData.visa.eligibilityRules
+                          .filter(r => r.field === 'englishProficiency')
+                          .map(r => r.description)
+                          .join('. ') || 'English proficiency required'
+                      : undefined,
+                    investment: selectedVisaData.requirementStatus.investmentMet !== null
+                      ? selectedVisaData.visa.eligibilityRules
+                          .filter(r => r.field === 'investmentAmount')
+                          .map(r => r.description)
+                          .join('. ') || 'Investment amount required'
+                      : undefined,
+                    citizenship: selectedVisaData.requirementStatus.citizenshipOk !== null
+                      ? selectedVisaData.visa.eligibilityRules
+                          .filter(r => r.field === 'citizenshipRestrictionCategory')
+                          .map(r => r.description)
+                          .join('. ') || 'Must be foreign national (non-U.S. citizen)'
+                      : undefined,
+                    previousVisa: selectedVisaData.requirementStatus.previousVisaMet !== null
+                      ? selectedVisaData.visa.eligibilityRules
+                          .filter(r => r.field === 'previousVisa')
+                          .map(r => r.description)
+                          .join('. ') || 'Previous visa required'
+                      : undefined,
                   },
                 }}
                 userMeets={{
-                  education: selectedVisaData.matchResult 
-                    ? !selectedVisaData.matchResult.failedRules.some(r => r.includes('education'))
-                    : false,
-                  experience: selectedVisaData.matchResult
-                    ? !selectedVisaData.matchResult.failedRules.some(r => r.includes('experience'))
-                    : false,
+                  education: selectedVisaData.requirementStatus.educationMet ?? undefined,
+                  experience: selectedVisaData.requirementStatus.experienceMet ?? undefined,
+                  english: selectedVisaData.requirementStatus.englishMet ?? undefined,
+                  investment: selectedVisaData.requirementStatus.investmentMet ?? undefined,
+                  citizenship: selectedVisaData.requirementStatus.citizenshipOk ?? undefined,
+                  previousVisa: selectedVisaData.requirementStatus.previousVisaMet ?? undefined,
                 }}
                 onClose={handleClosePanel}
               />

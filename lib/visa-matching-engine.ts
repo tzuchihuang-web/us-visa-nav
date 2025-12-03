@@ -61,6 +61,32 @@ export interface VisaEligibilityScore {
 }
 
 /**
+ * Structured requirement status for a visa
+ * 
+ * Provides detailed breakdown of requirement categories:
+ * - meetsCoreRequirements: Overall eligibility (true if 90%+ rules pass)
+ * - educationMet: User's education level meets minimum requirement
+ * - experienceMet: User's work experience meets minimum years
+ * - englishMet: User's English proficiency meets minimum level
+ * - investmentMet: User's investment amount meets minimum (for investor visas)
+ * - citizenshipOk: No citizenship restrictions block this visa
+ * - previousVisaMet: User has required previous visa (if applicable)
+ * - detailMessage: Human-readable explanation of status
+ */
+export interface VisaRequirementStatus {
+  visaId: string;
+  meetsCoreRequirements: boolean;
+  educationMet: boolean | null;  // null if not applicable
+  experienceMet: boolean | null;
+  englishMet: boolean | null;
+  investmentMet: boolean | null;
+  citizenshipOk: boolean | null;
+  previousVisaMet: boolean | null;
+  detailMessage: string;
+  matchPercentage: number;
+}
+
+/**
  * Evaluate a single eligibility rule against user profile
  * 
  * Returns true if rule passes, false otherwise
@@ -292,4 +318,121 @@ export function getNextVisaOptions(
     reason: next.reason,
     status: (scoreVisa(next.visaId, profile)?.status || 'locked') as 'recommended' | 'available' | 'locked',
   }));
+}
+
+/**
+ * GENERIC REQUIREMENT STATUS EVALUATOR
+ * 
+ * Evaluates all requirement categories for a visa and returns structured status.
+ * This is the single source of truth for requirement evaluation across the app.
+ * 
+ * Usage:
+ * ```
+ * const reqStatus = getVisaRequirementStatus('h1b', userProfile);
+ * console.log('H-1B education met:', reqStatus.educationMet);
+ * console.log('H-1B core requirements:', reqStatus.meetsCoreRequirements);
+ * ```
+ * 
+ * @param visaId - Visa ID to evaluate (e.g., 'h1b', 'f1', 'eb2gc')
+ * @param profile - User profile with education, experience, etc.
+ * @returns Structured requirement status with per-category booleans
+ */
+export function getVisaRequirementStatus(
+  visaId: string,
+  profile: UserProfile
+): VisaRequirementStatus | null {
+  const visa = VISA_KNOWLEDGE_BASE[visaId];
+  if (!visa) {
+    console.warn(`[getVisaRequirementStatus] Visa not found: ${visaId}`);
+    return null;
+  }
+
+  const score = scoreVisa(visaId, profile);
+  if (!score) {
+    return null;
+  }
+
+  // Initialize status tracking for each requirement category
+  let educationMet: boolean | null = null;
+  let experienceMet: boolean | null = null;
+  let englishMet: boolean | null = null;
+  let investmentMet: boolean | null = null;
+  let citizenshipOk: boolean | null = null;
+  let previousVisaMet: boolean | null = null;
+
+  // Evaluate each rule and categorize it
+  visa.eligibilityRules.forEach((rule) => {
+    const passed = evaluateRule(rule, profile);
+
+    switch (rule.field) {
+      case 'educationLevel':
+        educationMet = passed;
+        break;
+      case 'yearsOfExperience':
+        experienceMet = passed;
+        break;
+      case 'englishProficiency':
+        englishMet = passed;
+        break;
+      case 'investmentAmount':
+        investmentMet = passed;
+        break;
+      case 'citizenshipRestrictionCategory':
+        citizenshipOk = passed;
+        break;
+      case 'previousVisa':
+        previousVisaMet = passed;
+        break;
+    }
+  });
+
+  // Determine if core requirements are met (90%+ match = recommended)
+  const meetsCoreRequirements = score.matchPercentage >= 90;
+
+  // Generate detail message
+  let detailMessage = '';
+  if (meetsCoreRequirements) {
+    detailMessage = `Your profile matches ${score.matchPercentage}% of requirements. This may be a strong match for you.`;
+  } else if (score.matchPercentage >= 50) {
+    detailMessage = `Your profile matches ${score.matchPercentage}% of requirements. Consider strengthening: ${score.failedRules.slice(0, 2).join(', ')}.`;
+  } else {
+    detailMessage = `Your profile matches ${score.matchPercentage}% of requirements. You may need to work on: ${score.failedRules.slice(0, 3).join(', ')}.`;
+  }
+
+  // Development logging for debugging
+  if (process.env.NODE_ENV === 'development') {
+    console.info(`[VisaRequirementStatus] ${visa.code}:`, {
+      profile: {
+        education: profile.educationLevel,
+        experience: profile.yearsOfExperience,
+        english: profile.englishProficiency,
+        investment: profile.investmentAmount,
+        citizenship: profile.countryOfCitizenship,
+        currentVisa: profile.currentVisa,
+      },
+      status: {
+        meetsCoreRequirements,
+        educationMet,
+        experienceMet,
+        englishMet,
+        investmentMet,
+        citizenshipOk,
+        previousVisaMet,
+        matchPercentage: score.matchPercentage,
+      },
+    });
+  }
+
+  return {
+    visaId,
+    meetsCoreRequirements,
+    educationMet,
+    experienceMet,
+    englishMet,
+    investmentMet,
+    citizenshipOk,
+    previousVisaMet,
+    detailMessage,
+    matchPercentage: score.matchPercentage,
+  };
 }

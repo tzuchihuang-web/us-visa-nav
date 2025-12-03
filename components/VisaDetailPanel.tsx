@@ -13,6 +13,10 @@
 interface VisaRequirements {
   education?: string;
   experience?: string;
+  english?: string;
+  investment?: string;
+  citizenship?: string;
+  previousVisa?: string;
   salary?: string;
   sponsorship?: string;
 }
@@ -34,6 +38,10 @@ interface VisaDetailPanelProps {
   userMeets?: {
     education?: boolean;
     experience?: boolean;
+    english?: boolean;
+    investment?: boolean;
+    citizenship?: boolean;
+    previousVisa?: boolean;
     salary?: boolean;
     sponsorship?: boolean;
   };
@@ -157,12 +165,23 @@ export function VisaDetailPanel({
               <div className="space-y-2">
                 {visa.requirements.education && (
                   <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="mt-1">{userMeets.education ? '✓' : '○'}</div>
+                    <div className="mt-1">
+                      {userMeets.education === true ? (
+                        <span className="text-green-600 font-bold">✓</span>
+                      ) : userMeets.education === false ? (
+                        <span className="text-red-500 font-bold">✗</span>
+                      ) : (
+                        <span className="text-gray-400">○</span>
+                      )}
+                    </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">Education</p>
                       <p className="text-xs text-gray-600">{visa.requirements.education}</p>
-                      {userMeets.education && (
-                        <p className="text-xs text-green-600 mt-1">You meet this</p>
+                      {userMeets.education === true && (
+                        <p className="text-xs text-green-600 mt-1 font-medium">✓ You meet this requirement</p>
+                      )}
+                      {userMeets.education === false && (
+                        <p className="text-xs text-amber-600 mt-1 font-medium">Need to strengthen this area</p>
                       )}
                     </div>
                   </div>
@@ -170,12 +189,119 @@ export function VisaDetailPanel({
 
                 {visa.requirements.experience && (
                   <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="mt-1">{userMeets.experience ? '✓' : '○'}</div>
+                    <div className="mt-1">
+                      {userMeets.experience === true ? (
+                        <span className="text-green-600 font-bold">✓</span>
+                      ) : userMeets.experience === false ? (
+                        <span className="text-red-500 font-bold">✗</span>
+                      ) : (
+                        <span className="text-gray-400">○</span>
+                      )}
+                    </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">Experience</p>
                       <p className="text-xs text-gray-600">{visa.requirements.experience}</p>
-                      {userMeets.experience && (
-                        <p className="text-xs text-green-600 mt-1">You meet this</p>
+                      {userMeets.experience === true && (
+                        <p className="text-xs text-green-600 mt-1 font-medium">✓ You meet this requirement</p>
+                      )}
+                      {userMeets.experience === false && (
+                        <p className="text-xs text-amber-600 mt-1 font-medium">Need to strengthen this area</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {visa.requirements.english && (
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="mt-1">
+                      {userMeets.english === true ? (
+                        <span className="text-green-600 font-bold">✓</span>
+                      ) : userMeets.english === false ? (
+                        <span className="text-red-500 font-bold">✗</span>
+                      ) : (
+                        <span className="text-gray-400">○</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">English Proficiency</p>
+                      <p className="text-xs text-gray-600">{visa.requirements.english}</p>
+                      {userMeets.english === true && (
+                        <p className="text-xs text-green-600 mt-1 font-medium">✓ You meet this requirement</p>
+                      )}
+                      {userMeets.english === false && (
+                        <p className="text-xs text-amber-600 mt-1 font-medium">Need to strengthen this area</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {visa.requirements.investment && (
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="mt-1">
+                      {userMeets.investment === true ? (
+                        <span className="text-green-600 font-bold">✓</span>
+                      ) : userMeets.investment === false ? (
+                        <span className="text-red-500 font-bold">✗</span>
+                      ) : (
+                        <span className="text-gray-400">○</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">Investment Amount</p>
+                      <p className="text-xs text-gray-600">{visa.requirements.investment}</p>
+                      {userMeets.investment === true && (
+                        <p className="text-xs text-green-600 mt-1 font-medium">✓ You meet this requirement</p>
+                      )}
+                      {userMeets.investment === false && (
+                        <p className="text-xs text-amber-600 mt-1 font-medium">Need to strengthen this area</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {visa.requirements.citizenship && (
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="mt-1">
+                      {userMeets.citizenship === true ? (
+                        <span className="text-green-600 font-bold">✓</span>
+                      ) : userMeets.citizenship === false ? (
+                        <span className="text-red-500 font-bold">✗</span>
+                      ) : (
+                        <span className="text-gray-400">○</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">Citizenship Eligibility</p>
+                      <p className="text-xs text-gray-600">{visa.requirements.citizenship}</p>
+                      {userMeets.citizenship === true && (
+                        <p className="text-xs text-green-600 mt-1 font-medium">✓ You meet this requirement</p>
+                      )}
+                      {userMeets.citizenship === false && (
+                        <p className="text-xs text-amber-600 mt-1 font-medium">Citizenship restrictions may apply</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {visa.requirements.previousVisa && (
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="mt-1">
+                      {userMeets.previousVisa === true ? (
+                        <span className="text-green-600 font-bold">✓</span>
+                      ) : userMeets.previousVisa === false ? (
+                        <span className="text-red-500 font-bold">✗</span>
+                      ) : (
+                        <span className="text-gray-400">○</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">Previous Visa Required</p>
+                      <p className="text-xs text-gray-600">{visa.requirements.previousVisa}</p>
+                      {userMeets.previousVisa === true && (
+                        <p className="text-xs text-green-600 mt-1 font-medium">✓ You meet this requirement</p>
+                      )}
+                      {userMeets.previousVisa === false && (
+                        <p className="text-xs text-amber-600 mt-1 font-medium">Previous visa requirement not met</p>
                       )}
                     </div>
                   </div>
@@ -183,12 +309,23 @@ export function VisaDetailPanel({
 
                 {visa.requirements.salary && (
                   <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="mt-1">{userMeets.salary ? '✓' : '○'}</div>
+                    <div className="mt-1">
+                      {userMeets.salary === true ? (
+                        <span className="text-green-600 font-bold">✓</span>
+                      ) : userMeets.salary === false ? (
+                        <span className="text-red-500 font-bold">✗</span>
+                      ) : (
+                        <span className="text-gray-400">○</span>
+                      )}
+                    </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">Salary</p>
                       <p className="text-xs text-gray-600">{visa.requirements.salary}</p>
-                      {userMeets.salary && (
-                        <p className="text-xs text-green-600 mt-1">You meet this</p>
+                      {userMeets.salary === true && (
+                        <p className="text-xs text-green-600 mt-1 font-medium">✓ You meet this requirement</p>
+                      )}
+                      {userMeets.salary === false && (
+                        <p className="text-xs text-amber-600 mt-1 font-medium">Need to strengthen this area</p>
                       )}
                     </div>
                   </div>
@@ -196,12 +333,23 @@ export function VisaDetailPanel({
 
                 {visa.requirements.sponsorship && (
                   <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="mt-1">{userMeets.sponsorship ? '✓' : '○'}</div>
+                    <div className="mt-1">
+                      {userMeets.sponsorship === true ? (
+                        <span className="text-green-600 font-bold">✓</span>
+                      ) : userMeets.sponsorship === false ? (
+                        <span className="text-red-500 font-bold">✗</span>
+                      ) : (
+                        <span className="text-gray-400">○</span>
+                      )}
+                    </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">Sponsorship</p>
                       <p className="text-xs text-gray-600">{visa.requirements.sponsorship}</p>
-                      {userMeets.sponsorship && (
-                        <p className="text-xs text-green-600 mt-1">You meet this</p>
+                      {userMeets.sponsorship === true && (
+                        <p className="text-xs text-green-600 mt-1 font-medium">✓ You meet this requirement</p>
+                      )}
+                      {userMeets.sponsorship === false && (
+                        <p className="text-xs text-amber-600 mt-1 font-medium">Need to strengthen this area</p>
                       )}
                     </div>
                   </div>
@@ -210,30 +358,41 @@ export function VisaDetailPanel({
             </div>
           )}
 
-          {/* Match Summary */}
-          {visa.status === 'locked' && (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-900">
-                <strong>Requirements not met:</strong> Strengthen your qualifications to explore this path.
-              </p>
+          {/* Match Summary - Shows overall eligibility */}
+          <div className={`p-4 rounded-lg border ${
+            visa.status === 'recommended' 
+              ? 'bg-green-50 border-green-200' 
+              : visa.status === 'available'
+              ? 'bg-blue-50 border-blue-200'
+              : 'bg-amber-50 border-amber-200'
+          }`}>
+            <div className={`text-sm ${
+              visa.status === 'recommended' 
+                ? 'text-green-900' 
+                : visa.status === 'available'
+                ? 'text-blue-900'
+                : 'text-amber-900'
+            }`}>
+              {visa.status === 'recommended' && (
+                <>
+                  <strong>✓ Core requirements met:</strong> Your profile strongly aligns with this visa. 
+                  This could be an excellent path for you.
+                </>
+              )}
+              {visa.status === 'available' && (
+                <>
+                  <strong>Partial match:</strong> You meet many requirements for this visa. 
+                  Consider strengthening a few areas to increase your eligibility.
+                </>
+              )}
+              {visa.status === 'locked' && (
+                <>
+                  <strong>Requirements not met:</strong> Strengthen your qualifications to explore this path. 
+                  Focus on the requirements marked above.
+                </>
+              )}
             </div>
-          )}
-
-          {visa.status === 'recommended' && (
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-900">
-                <strong>May be eligible:</strong> This visa aligns with your profile and could be a good next step.
-              </p>
-            </div>
-          )}
-
-          {visa.status === 'available' && (
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-900">
-                <strong>Could be a path:</strong> This visa could work for your situation with some qualification strengthening.
-              </p>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* CTA Button - Sticky footer */}
