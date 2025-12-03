@@ -1,57 +1,38 @@
 'use client';
 
-/**
- * VISA MAP REDESIGNED - DYNAMIC PATH COMPUTATION
- * 
- * ============================================================================
- * DYNAMIC VISA GRAPH COMPUTATION VIA BFS
- * ============================================================================
- * 
- * This component dynamically computes visa paths using breadth-first search (BFS)
- * based on the user's current visa and the commonNextSteps relationships in the
- * visa knowledge base.
- * 
- * KEY FEATURES:
- * 1. Builds adjacency graph from VISA_KNOWLEDGE_BASE.commonNextSteps
- * 2. Performs BFS from currentVisa to compute reachable visa tiers (levels 0-3)
- * 3. Only shows visas that are actually reachable from current position
- * 4. Filters out tourist/visitor categories from main map display
- * 5. Recomputes entire graph when currentVisa changes
- * 
- * TIER COMPUTATION (BFS-based):
- * - Level 0: Current visa (or START if none)
- * - Level 1: Visas directly reachable via commonNextSteps from Level 0
- * - Level 2: Visas reachable from Level 1 (excluding already visited)
- * - Level 3: Visas reachable from Level 2 (and so on)
- * 
- * CATEGORY FILTERING:
- * - Includes: student, worker, investor, immigrant categories
- * - Excludes: tourist, visitor, family, special categories
- * 
- * DATA FLOW:
- * - userProfile.currentVisa → Build adjacency graph → BFS traversal → Dynamic tiers
- * - Matching engine scores all reachable visas for eligibility (green/blue/gray)
- * - Map re-renders when currentVisa changes with new tier structure
- * 
- * ============================================================================
- */
-
 import React, { useMemo } from 'react';
-import { VISA_KNOWLEDGE_BASE } from '@/lib/visa-knowledge-base';
+import { VISA_KNOWLEDGE_BASE, VisaDefinition } from '@/lib/visa-knowledge-base';
 import { UserProfile } from '@/lib/types';
-import { getVisaRecommendations, getVisasByStatus } from '@/lib/visa-matching-engine';
-import { idToUiLabel } from '@/lib/utils';
+import { getVisaRecommendations } from '@/lib/visa-matching-engine';
 
 interface VisaMapRedesignedProps {
-  /** User profile from matching engine */
   userProfile: UserProfile;
-  /** Optional pre-computed visa matches (if provided, skips internal computation) */
-  matches?: ReturnType<typeof getVisasByStatus>;
-  /** Currently selected visa on map */
   selectedVisa?: string | null;
-  /** Callback when user clicks a visa node */
   onVisaSelect: (visaId: string) => void;
 }
+
+/** 地圖上要顯示的簽證大分類（排除旅遊等） */
+const INCLUDED_CATEGORIES = ['student', 'worker', 'immigrant', 'investor'] as const;
+
+/** tier 映射 - 根據 visa tier 決定顯示位置 */
+type TierKey = 'level0' | 'level1' | 'level2' | 'level3';
+
+// Map visa.tier to display tiers
+const TIER_MAPPING: Record<string, TierKey> = {
+  start: 'level0',
+  entry: 'level1',
+  intermediate: 'level2',
+  advanced: 'level3',
+};
+
+const TIER_ORDER: TierKey[] = ['level0', 'level1', 'level2', 'level3'];
+
+/** difficulty 數值 → Y座標 offset */
+const DIFFICULTY_OFFSET: Record<number, number> = {
+  1: 0,
+  2: 1,
+  3: 2,
+};
 
 const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   userProfile,
@@ -59,7 +40,19 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   onVisaSelect,
 }) => {
   // ========================================================================
-  // CENTRALIZED CLICK HANDLER
+  // 1. 把 VISA_KNOWLEDGE_BASE (Record) 變成好查詢的 map（id → visa）
+  // ========================================================================
+  const visaById = useMemo(() => {
+    const map: Record<string, VisaDefinition> = {};
+    Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
+      const visa = VISA_KNOWLEDGE_BASE[key];
+      map[visa.id.toLowerCase()] = visa;
+    });
+    return map;
+  }, []);
+
+  // ========================================================================
+  // 2. 中央 click handler
   // ========================================================================
   const handleNodeClick = (visaId: string) => {
     console.log('[VisaMap] Node clicked:', visaId);
@@ -67,254 +60,175 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   };
 
   // ========================================================================
-  // SCORE ALL VISAS USING MATCHING ENGINE
+  // 3. Matching engine – 取得每個 visa 的推薦狀態
   // ========================================================================
   const visaRecommendations = useMemo(
     () => getVisaRecommendations(userProfile),
     [userProfile]
   );
 
-  const recommendedVisas = useMemo(
-    () => getVisasByStatus(visaRecommendations, 'recommended'),
-    [visaRecommendations]
-  );
-  const availableVisas = useMemo(
-    () => getVisasByStatus(visaRecommendations, 'available'),
-    [visaRecommendations]
-  );
-
   // ========================================================================
-  // DYNAMIC TIER COMPUTATION VIA BFS
+  // 4. 建 adjacency graph：id → [nextId...]
   // ========================================================================
-  
-  /**
-   * CATEGORY FILTERING
-   * Only include these categories on the main visa map.
-   * Tourist/visitor visas are excluded from the progression path.
-   */
-  const INCLUDED_CATEGORIES = ['student', 'worker', 'investor', 'immigrant'];
-
-  /**
-   * BUILD ADJACENCY GRAPH FROM VISA KNOWLEDGE BASE
-   * 
-   * Creates a directed graph where each visa points to its commonNextSteps.
-   * This adjacency list is used for BFS traversal to find reachable visas.
-   * 
-   * Structure: { visaId: [nextVisaId1, nextVisaId2, ...] }
-   * Example: { f1: ['opt', 'h1b', 'eb2gc'], opt: ['h1b', 'o1', 'eb2gc'], ... }
-   */
   const adjacencyGraph = useMemo(() => {
     const graph: Record<string, string[]> = {};
-    
-    Object.keys(VISA_KNOWLEDGE_BASE).forEach((visaId) => {
-      const visa = VISA_KNOWLEDGE_BASE[visaId];
+
+    Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
+      const visa = VISA_KNOWLEDGE_BASE[key];
       
-      // Only include visas from allowed categories
-      if (!INCLUDED_CATEGORIES.includes(visa.category)) {
-        return;
-      }
-      
-      // Extract next step visa IDs from commonNextSteps
-      const nextSteps = visa.commonNextSteps
-        ?.map(step => step.visaId.toLowerCase())
-        .filter(nextId => {
-          const nextVisa = VISA_KNOWLEDGE_BASE[nextId];
-          // Only include next steps that are in allowed categories
-          return nextVisa && INCLUDED_CATEGORIES.includes(nextVisa.category);
-        }) || [];
-      
-      graph[visaId] = nextSteps;
+      // 只圖上顯示特定類別
+      if (!INCLUDED_CATEGORIES.includes(visa.category as any)) return;
+
+      const id = visa.id.toLowerCase();
+      const nextSteps =
+        visa.commonNextSteps
+          ?.map((step) => step.visaId.toLowerCase())
+          .filter((nextId) => {
+            const nextVisa = visaById[nextId];
+            return !!nextVisa && INCLUDED_CATEGORIES.includes(nextVisa.category as any);
+          }) ?? [];
+
+      graph[id] = nextSteps;
     });
-    
+
     console.info('[VisaMapRedesigned] Built adjacency graph:', graph);
     return graph;
-  }, []);
+  }, [visaById]);
 
-  /**
-   * FIND PATH BETWEEN TWO VISAS USING BFS
-   * 
-   * Uses breadth-first search to find the shortest path from one visa to another
-   * following the edges defined in the adjacency graph (commonNextSteps).
-   * 
-   * @param adjacency - The visa adjacency graph (visaId -> [nextVisaIds])
-   * @param fromId - Starting visa ID (lowercase)
-   * @param toId - Target visa ID (lowercase)
-   * @returns Array of visa IDs forming the path (including from and to), or null if no path exists
-   * 
-   * Example: findPathBetweenVisas(graph, 'f1', 'eb2gc') -> ['f1', 'opt', 'h1b', 'eb2gc']
-   */
-  const findPathBetweenVisas = (
-    adjacency: Record<string, string[]>,
-    fromId: string,
-    toId: string
-  ): string[] | null => {
-    // Normalize to lowercase
-    const normalizedFrom = fromId.toLowerCase();
-    const normalizedTo = toId.toLowerCase();
+  // ========================================================================
+  // 5. BFS：算從 currentVisa 出發「可到達的所有簽證」
+  // ========================================================================
+  const reachableVisaIds = useMemo(() => {
+    const current = userProfile.currentVisa?.toLowerCase();
+    const reachable = new Set<string>();
 
-    // Edge case: same visa
-    if (normalizedFrom === normalizedTo) {
-      return [normalizedFrom];
+    // 沒有 currentVisa：先把所有簽證當成 reachable
+    if (!current) {
+      Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
+        const visa = VISA_KNOWLEDGE_BASE[key];
+        if (!INCLUDED_CATEGORIES.includes(visa.category as any)) return;
+        reachable.add(visa.id.toLowerCase());
+      });
+      console.info('[VisaMapRedesigned] No current visa – treating all visas as reachable.');
+      return reachable;
     }
 
-    // BFS to find shortest path
-    const queue: Array<{ visaId: string; path: string[] }> = [
-      { visaId: normalizedFrom, path: [normalizedFrom] },
-    ];
-    const visited = new Set<string>([normalizedFrom]);
+    // 有 currentVisa：從 currentVisa BFS
+    if (!visaById[current]) {
+      console.warn('[VisaMapRedesigned] currentVisa not found in knowledge base:', current);
+      return reachable;
+    }
+
+    const queue: string[] = [current];
+    reachable.add(current);
 
     while (queue.length > 0) {
-      const { visaId, path } = queue.shift()!;
-
-      // Get neighbors from adjacency graph
-      const neighbors = adjacency[visaId] || [];
-
-      for (const nextVisaId of neighbors) {
-        if (visited.has(nextVisaId)) continue;
-
-        visited.add(nextVisaId);
-        const newPath = [...path, nextVisaId];
-
-        // Check if we reached the target
-        if (nextVisaId === normalizedTo) {
-          return newPath;
+      const id = queue.shift()!;
+      const neighbors = adjacencyGraph[id] || [];
+      for (const nextId of neighbors) {
+        if (!reachable.has(nextId)) {
+          reachable.add(nextId);
+          queue.push(nextId);
         }
-
-        queue.push({ visaId: nextVisaId, path: newPath });
       }
     }
 
-    // No path found
-    return null;
-  };
+    console.info('[VisaMapRedesigned] Reachable visas from current:', Array.from(reachable));
+    return reachable;
+  }, [userProfile.currentVisa, adjacencyGraph, visaById]);
 
-  /**
-   * COMPUTE TIERS VIA BREADTH-FIRST SEARCH (BFS)
-   * 
-   * Starting from the current visa (or START), perform BFS to assign each
-   * reachable visa to a tier/level based on its distance from the starting point.
-   * 
-   * Algorithm:
-   * 1. Start with currentVisa at Level 0
-   * 2. Add all visas reachable from Level 0 to Level 1 (via commonNextSteps)
-   * 3. Add all visas reachable from Level 1 to Level 2 (excluding visited)
-   * 4. Continue until no more reachable visas
-   * 
-   * Special case: If no currentVisa, show entry-level visas at Level 1
-   * (START node behavior for new users)
-   */
+  // ========================================================================
+  // 6. 用 tier → tier 排版欄位，但只顯示 reachable 的簽證
+  // ========================================================================
   const visasByTier = useMemo(() => {
-    const tiers: Record<string, string[]> = {
+    const tiers: Record<TierKey, string[]> = {
       level0: [],
       level1: [],
       level2: [],
       level3: [],
     };
 
-    console.info('[VisaMapRedesigned] Computing dynamic tiers. Current visa:', userProfile.currentVisa);
+    const currentVisaId = userProfile.currentVisa?.toLowerCase() ?? null;
 
-    // CASE 1: User has a current visa - build reachable graph from that visa
-    if (userProfile.currentVisa) {
-      const startVisaId = userProfile.currentVisa.toLowerCase();
-      const startVisa = VISA_KNOWLEDGE_BASE[startVisaId];
+    Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
+      const visa = VISA_KNOWLEDGE_BASE[key];
       
-      // Validate current visa exists and is in allowed categories
-      if (!startVisa || !INCLUDED_CATEGORIES.includes(startVisa.category)) {
-        console.warn('[VisaMapRedesigned] Current visa not found or not in allowed categories:', startVisaId);
-        // Fall through to CASE 2 (show entry visas)
+      if (!INCLUDED_CATEGORIES.includes(visa.category as any)) return;
+
+      const id = visa.id.toLowerCase();
+
+      // 有 currentVisa 時，只顯示 reachable 的簽證
+      if (currentVisaId && !reachableVisaIds.has(id)) return;
+
+      // 根據 visa.tier 映射到顯示層級
+      const tierKey = TIER_MAPPING[visa.tier] || 'level1';
+      
+      // 如果是當前簽證，放在 level0
+      if (currentVisaId && id === currentVisaId) {
+        tiers.level0.push(id);
       } else {
-        console.info('[VisaMapRedesigned] Starting BFS from:', startVisaId);
-        
-        // BFS IMPLEMENTATION
-        const visited = new Set<string>();
-        const queue: Array<{ visaId: string; level: number }> = [{ visaId: startVisaId, level: 0 }];
-        
-        visited.add(startVisaId);
-        tiers.level0.push(startVisaId);
-        
-        while (queue.length > 0) {
-          const { visaId, level } = queue.shift()!;
-          const nextSteps = adjacencyGraph[visaId] || [];
-          
-          // Process each connected visa
-          for (const nextVisaId of nextSteps) {
-            if (visited.has(nextVisaId)) continue;
-            
-            visited.add(nextVisaId);
-            const nextLevel = level + 1;
-            
-            // Assign to appropriate tier (cap at level 3)
-            if (nextLevel === 1) {
-              tiers.level1.push(nextVisaId);
-              queue.push({ visaId: nextVisaId, level: nextLevel });
-            } else if (nextLevel === 2) {
-              tiers.level2.push(nextVisaId);
-              queue.push({ visaId: nextVisaId, level: nextLevel });
-            } else if (nextLevel === 3) {
-              tiers.level3.push(nextVisaId);
-              // Don't queue level 3+ to prevent infinite expansion
-            }
-          }
-        }
-        
-        console.info('[VisaMapRedesigned] BFS complete. Tiers:', {
-          level0: tiers.level0,
-          level1: tiers.level1,
-          level2: tiers.level2,
-          level3: tiers.level3,
-        });
-        
-        return tiers;
-      }
-    }
-    
-    // CASE 2: No current visa - show START node + entry-level visas
-    console.info('[VisaMapRedesigned] No current visa - showing START + entry visas');
-    tiers.level0 = ['start'];
-    
-    // Show entry-level visas at Level 1
-    Object.keys(VISA_KNOWLEDGE_BASE).forEach((visaId) => {
-      const visa = VISA_KNOWLEDGE_BASE[visaId];
-      if (visaId !== 'start' && 
-          INCLUDED_CATEGORIES.includes(visa.category) && 
-          visa.tier === 'entry') {
-        tiers.level1.push(visaId);
+        tiers[tierKey].push(id);
       }
     });
-    
-    console.info('[VisaMapRedesigned] Entry-level visas:', tiers.level1);
+
+    // 沒有 currentVisa：在 level0 加一個「START」假的節點
+    if (!userProfile.currentVisa) {
+      tiers.level0 = ['start'];
+    }
+
+    console.info('[VisaMapRedesigned] Final tier structure (by tier):', tiers);
     return tiers;
-  }, [userProfile.currentVisa, adjacencyGraph]);
+  }, [reachableVisaIds, userProfile.currentVisa]);
 
   // ========================================================================
-  // PATH HIGHLIGHTING: Compute highlighted path from currentVisa to selectedVisa
+  // 7. BFS 找 currentVisa → selectedVisa 的 path，用來做 highlight
   // ========================================================================
-  
-  /**
-   * HIGHLIGHTED PATH COMPUTATION
-   * 
-   * When a user clicks a visa node on the map:
-   * 1. Find the shortest path from currentVisa → selectedVisa using BFS
-   * 2. Store all visa IDs on that path in highlightedPathIds
-   * 3. Nodes and edges NOT on the path will be dimmed (reduced opacity)
-   * 4. When selectedVisa is null, highlightedPathIds is also null (no dimming)
-   * 
-   * This creates a visual focus on the user's potential visa journey path.
-   */
+  const findPathBetweenVisas = (
+    adjacency: Record<string, string[]>,
+    fromId: string,
+    toId: string
+  ): string[] | null => {
+    const start = fromId.toLowerCase();
+    const target = toId.toLowerCase();
+
+    if (start === target) return [start];
+
+    const queue: Array<{ visaId: string; path: string[] }> = [
+      { visaId: start, path: [start] },
+    ];
+    const visited = new Set<string>([start]);
+
+    while (queue.length > 0) {
+      const { visaId, path } = queue.shift()!;
+      const neighbors = adjacency[visaId] || [];
+
+      for (const next of neighbors) {
+        if (visited.has(next)) continue;
+        visited.add(next);
+        const newPath = [...path, next];
+        if (next === target) return newPath;
+        queue.push({ visaId: next, path: newPath });
+      }
+    }
+
+    return null;
+  };
+
   const highlightedPathIds = useMemo(() => {
-    // No selection = no highlighting (all nodes/edges normal)
     if (!selectedVisa) return null;
 
-    const currentVisaId = userProfile.currentVisa?.toLowerCase() || 'start';
-    const selectedVisaId = selectedVisa.toLowerCase();
+    const current = userProfile.currentVisa?.toLowerCase();
+    const selected = selectedVisa.toLowerCase();
 
-    // Find path using BFS
-    const path = findPathBetweenVisas(adjacencyGraph, currentVisaId, selectedVisaId);
-    
+    // 沒有 currentVisa：只 highlight 被點的那顆
+    if (!current) {
+      return new Set([selected]);
+    }
+
+    const path = findPathBetweenVisas(adjacencyGraph, current, selected);
     if (!path) {
-      // No path found: highlight just the current visa and selected visa
-      console.info('[VisaMapRedesigned] No path found, highlighting endpoints only');
-      return new Set([currentVisaId, selectedVisaId]);
+      console.info('[VisaMapRedesigned] No path found – highlighting only endpoints');
+      return new Set([current, selected]);
     }
 
     console.info('[VisaMapRedesigned] Highlighted path:', path);
@@ -322,34 +236,31 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   }, [selectedVisa, userProfile.currentVisa, adjacencyGraph]);
 
   // ========================================================================
-  // TIER ORDERING & POSITIONING
+  // 8. layout：依 tier 排 X，依 index + difficulty 排 Y
   // ========================================================================
-  
-  /**
-   * TIER ORDERING (BFS Levels)
-   * Maps BFS levels to display positions on the map
-   */
-  const tierOrder = ['level0', 'level1', 'level2', 'level3'];
+  const getVisaPosition = (
+    tier: TierKey,
+    index: number,
+    total: number,
+    visa?: VisaDefinition
+  ) => {
+    const tierIdx = TIER_ORDER.indexOf(tier);
+    const baseX = 160; // 起始 X
+    const tierSpacingX = 260;
+    const x = baseX + tierIdx * tierSpacingX;
 
-  /**
-   * CALCULATE VISA NODE POSITION
-   * 
-   * Positions visas on a 2D map based on:
-   * - X-axis: BFS level (level0 → level1 → level2 → level3, left to right)
-   * - Y-axis: Index within tier + difficulty adjustment (vertical spread)
-   * 
-   * This creates a visual flow showing visa progression paths.
-   */
-  const getVisaPosition = (tier: string, index: number, total: number, visa?: any) => {
-    const tierIdx = tierOrder.indexOf(tier);
-    const tierX = 80 + tierIdx * 220; // Horizontal spacing between tiers
-    
-    // Y-axis: Use difficulty to influence positioning
-    // Higher difficulty = higher on Y-axis (slightly)
-    const difficultyOffset = visa?.difficulty ? (visa.difficulty - 1) * 30 : 0;
-    const tierY = 160 + (index - (total - 1) / 2) * 100 + difficultyOffset;
-    
-    return { x: tierX, y: tierY };
+    const baseY = 260; // 整張圖往下移一點，避免貼頂
+    const verticalSpacing = 110;
+
+    const difficultyValue = visa?.difficulty ?? 2;
+    const difficultyOffset = (DIFFICULTY_OFFSET[difficultyValue] ?? 0) * -12;
+
+    const y =
+      baseY +
+      (index - (total - 1) / 2) * verticalSpacing +
+      difficultyOffset;
+
+    return { x, y };
   };
 
   const getLineStyle = (status: 'recommended' | 'available' | 'locked') => {
@@ -359,81 +270,67 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
       case 'available':
         return { stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: 'none' };
       case 'locked':
+      default:
         return { stroke: '#9ca3af', strokeWidth: 2, strokeDasharray: '5,5' };
     }
   };
 
   // ========================================================================
-  // RENDER CONNECTIONS (LINES) BETWEEN VISAS
+  // 9. 畫 edge（只畫 commonNextSteps）＋ path dimming
   // ========================================================================
-  
-  /**
-   * RENDER CONNECTION LINES BASED ON ACTUAL commonNextSteps EDGES
-   * 
-   * Instead of connecting all nodes in adjacent tiers, this renders only
-   * the actual edges defined in the visa knowledge base via commonNextSteps.
-   * 
-   * This creates a more accurate, sparse graph showing real visa pathways.
-   * 
-   * Line styling:
-   * - Green (solid): Recommended next steps (high eligibility)
-   * - Blue (solid): Available next steps (medium eligibility)
-   * - Gray (dashed): Locked next steps (low eligibility)
-   */
   const renderConnections = () => {
     const lines: React.ReactNode[] = [];
     let lineId = 0;
 
-    // Build a map of visaId -> {tier, index} for position lookups
-    const visaPositionMap = new Map<string, { tier: string; index: number; total: number }>();
-    tierOrder.forEach((tier) => {
+    const visaPositionMap = new Map<string, { tier: TierKey; index: number; total: number }>();
+
+    TIER_ORDER.forEach((tier) => {
       const visas = visasByTier[tier] || [];
       visas.forEach((visaId, index) => {
         visaPositionMap.set(visaId, { tier, index, total: visas.length });
       });
     });
 
-    // Render edges based on commonNextSteps in adjacency graph
-    tierOrder.forEach((tier) => {
+    TIER_ORDER.forEach((tier) => {
       const visasInTier = visasByTier[tier] || [];
-      
-      visasInTier.forEach((visaId) => {
-        const currentPosData = visaPositionMap.get(visaId);
-        if (!currentPosData) return;
-        
-        const currentVisa = VISA_KNOWLEDGE_BASE[visaId];
-        const currentPos = getVisaPosition(currentPosData.tier, currentPosData.index, currentPosData.total, currentVisa);
-        
-        // Get next steps from adjacency graph
-        const nextSteps = adjacencyGraph[visaId] || [];
-        
-        nextSteps.forEach((nextVisaId) => {
-          const nextPosData = visaPositionMap.get(nextVisaId);
-          if (!nextPosData) return; // Next visa not displayed (filtered out or not reachable)
-          
-          const nextVisa = VISA_KNOWLEDGE_BASE[nextVisaId];
-          const nextPos = getVisaPosition(nextPosData.tier, nextPosData.index, nextPosData.total, nextVisa);
-          const nextStatus = visaRecommendations[nextVisaId]?.status || 'locked';
-          const lineStyle = getLineStyle(nextStatus);
 
-          // Check if this edge is on the highlighted path
-          // An edge is highlighted if BOTH endpoints are in highlightedPathIds
-          const isEdgeOnPath = !highlightedPathIds || 
-            (highlightedPathIds.has(visaId.toLowerCase()) && 
-             highlightedPathIds.has(nextVisaId.toLowerCase()));
-          
-          // Dim edges not on the highlighted path
-          const edgeOpacity = isEdgeOnPath ? 0.6 : 0.15;
+      visasInTier.forEach((visaId) => {
+        // pseudo "start" node 沒有 edges
+        if (visaId === 'start') return;
+
+        const fromMeta = visaPositionMap.get(visaId);
+        if (!fromMeta) return;
+
+        const fromVisa = visaById[visaId];
+        const fromPos = getVisaPosition(fromMeta.tier, fromMeta.index, fromMeta.total, fromVisa);
+        const neighbors = adjacencyGraph[visaId] || [];
+
+        neighbors.forEach((nextId) => {
+          const toMeta = visaPositionMap.get(nextId);
+          if (!toMeta) return;
+
+          const toVisa = visaById[nextId];
+          const toPos = getVisaPosition(toMeta.tier, toMeta.index, toMeta.total, toVisa);
+          const status = (visaRecommendations[nextId]?.status ?? 'locked') as
+            | 'recommended'
+            | 'available'
+            | 'locked';
+          const style = getLineStyle(status);
+
+          const isOnPath =
+            !highlightedPathIds ||
+            (highlightedPathIds.has(visaId) && highlightedPathIds.has(nextId));
+          const opacity = isOnPath ? 0.7 : 0.15;
 
           lines.push(
             <line
               key={`line-${lineId++}`}
-              x1={currentPos.x + 35}
-              y1={currentPos.y + 35}
-              x2={nextPos.x}
-              y2={nextPos.y + 35}
-              {...lineStyle}
-              opacity={edgeOpacity}
+              x1={fromPos.x + 40}
+              y1={fromPos.y}
+              x2={toPos.x - 40}
+              y2={toPos.y}
+              {...style}
+              opacity={opacity}
             />
           );
         });
@@ -444,90 +341,104 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   };
 
   // ========================================================================
-  // RENDER VISA NODES
+  // 10. 畫每個簽證的 node（含「You are here」＋ hover tooltip）
   // ========================================================================
-  
-  /**
-   * RENDER VISA NODES ON THE MAP
-   * 
-   * Renders each visa as a circular node positioned according to its BFS level.
-   * 
-   * Node features:
-   * - Level 0 (current visa): Larger size, glowing ring, "You are here" label
-   * - Color coding: Green (recommended), Blue (available), Gray (locked)
-   * - Interactive: Hover tooltips, click to view details
-   * - Status labels: "May be eligible", "Could be a path", "Requirements not met"
-   */
   const renderVisaNodes = () => {
     const nodes: React.ReactNode[] = [];
+    const currentVisaId = userProfile.currentVisa?.toLowerCase() ?? null;
 
-    tierOrder.forEach((tier) => {
+    TIER_ORDER.forEach((tier) => {
       const visaIds = visasByTier[tier] || [];
-      const isCurrentTier = tier === 'level0'; // Level 0 is current visa
+      const total = visaIds.length;
 
       visaIds.forEach((visaId, index) => {
-        const visa = VISA_KNOWLEDGE_BASE[visaId];
-        const status = visaRecommendations[visaId]?.status || 'locked';
-        const isSelected = selectedVisa === visaId;
-        const isCurrentVisa = isCurrentTier && userProfile.currentVisa && visaId === userProfile.currentVisa;
+        if (visaId === 'start') {
+          // 新手沒有 currentVisa 的 "Start" 節點
+          const pos = getVisaPosition('level0', 0, 1);
+          nodes.push(
+            <div
+              key="start-node"
+              className="absolute w-24 h-24 rounded-full flex flex-col items-center justify-center text-sm font-semibold text-yellow-300 border border-yellow-400/60 bg-slate-800 shadow-lg shadow-yellow-400/40"
+              style={{
+                left: `${pos.x}px`,
+                top: `${pos.y}px`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <div className="text-lg mb-1">🚀</div>
+              Start
+            </div>
+          );
+          return;
+        }
 
-        if (!visa) return; // Skip if visa not found
+        const visa = visaById[visaId];
+        if (!visa) return;
 
-        // POSITION CALCULATION: Pass visa object to use difficulty field
-        const pos = getVisaPosition(tier, index, visaIds.length, visa);
+        const pos = getVisaPosition(tier, index, total, visa);
 
-        // Check if this node is on the highlighted path
-        const isOnHighlightedPath = !highlightedPathIds || highlightedPathIds.has(visaId.toLowerCase());
+        const status = (visaRecommendations[visaId]?.status ?? 'locked') as
+          | 'recommended'
+          | 'available'
+          | 'locked';
+
+        const isSelected = selectedVisa?.toLowerCase() === visaId;
+        const isCurrentVisa = currentVisaId === visaId;
+
+        const isOnHighlightedPath =
+          !highlightedPathIds || highlightedPathIds.has(visaId);
         const isDimmed = !!highlightedPathIds && !isOnHighlightedPath;
 
-        // Soft hedging language based on status
         const statusLabel =
           status === 'recommended'
             ? 'May be eligible'
             : status === 'available'
               ? 'Could be a path'
-              : 'Requirements not met';
+              : 'Strengthen skills first';
 
         nodes.push(
           <button
             key={visaId}
             onClick={() => handleNodeClick(visaId)}
-            className={`absolute w-20 h-20 rounded-full flex flex-col items-center justify-center font-bold text-center transition-all duration-200 cursor-pointer group ${
-              isSelected ? 'ring-2 ring-yellow-400 scale-110 z-30' : 'hover:scale-105 z-10'
-            } ${
-              isCurrentVisa
-                ? 'w-24 h-24 ring-2 ring-yellow-300 ring-opacity-50 shadow-2xl shadow-yellow-400/50 scale-105'
-                : ''
-            } ${
-              status === 'recommended'
-                ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg shadow-green-500/50'
-                : status === 'available'
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/50'
-                  : 'bg-gradient-to-br from-gray-600 to-gray-700 text-gray-300 opacity-60 shadow-lg shadow-gray-600/30 cursor-not-allowed'
-            }`}
+            className={`absolute rounded-full flex flex-col items-center justify-center font-bold text-center transition-all duration-200 cursor-pointer group
+              ${isSelected ? 'ring-2 ring-yellow-400 scale-110 z-30' : 'hover:scale-105 z-10'}
+              ${
+                isCurrentVisa
+                  ? 'w-28 h-28 ring-2 ring-yellow-300 ring-opacity-70 shadow-2xl shadow-yellow-400/50'
+                  : 'w-20 h-20'
+              }
+              ${
+                status === 'recommended'
+                  ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg shadow-green-500/50'
+                  : status === 'available'
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'bg-gradient-to-br from-gray-600 to-gray-700 text-gray-300 shadow-lg shadow-gray-600/30'
+              }`}
             style={{
               left: `${pos.x}px`,
               top: `${pos.y}px`,
               transform: 'translate(-50%, -50%)',
               opacity: isDimmed ? 0.25 : 1,
             }}
-            disabled={status === 'locked'}
-            title={statusLabel}
           >
-            <div className="text-2xl">{visa.emoji}</div>
-            <div className="text-xs font-semibold leading-tight">{visa.code}</div>
+            <div className="text-2xl">
+              {visa.emoji ?? '🛂'}
+            </div>
+            <div className="text-xs font-semibold leading-tight">
+              {visa.code ?? visa.id.toUpperCase()}
+            </div>
 
-            {/* "You are here" label for current visa */}
+            {/* "You are here" 標籤 */}
             {isCurrentVisa && (
-              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-yellow-300 font-bold text-xs whitespace-nowrap">
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-yellow-300 font-bold text-xs whitespace-nowrap">
                 ⭐ You are here
               </div>
             )}
 
-            {/* Hover Card with visa name + status */}
-            <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 border border-slate-700">
+            {/* Hover 小浮窗 */}
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 border border-slate-700">
               <div className="font-semibold">{visa.name}</div>
-              <div className="text-slate-400 text-xs">{statusLabel}</div>
+              <div className="text-slate-400 text-[11px]">{statusLabel}</div>
             </div>
           </button>
         );
@@ -538,12 +449,14 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   };
 
   // ========================================================================
-  // RENDER MAP
+  // 11. 實際 render Map（下移一點 + legend 改放右下角）
   // ========================================================================
+  const hasCurrent = !!userProfile.currentVisa;
+
   return (
     <div className="relative w-full h-full bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-lg overflow-hidden">
-      {/* Legend */}
-      <div className="absolute top-4 right-4 bg-slate-800/80 backdrop-blur rounded-lg p-3 text-xs z-40 border border-slate-700">
+      {/* Legend 移到右下角，不擋標題 */}
+      <div className="absolute right-4 bottom-4 bg-slate-800/80 backdrop-blur rounded-lg p-3 text-xs z-40 border border-slate-700">
         <div className="font-semibold mb-2 text-slate-200">Your Profile Match</div>
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -561,28 +474,20 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
         </div>
       </div>
 
-      {/* Tier Labels - Dynamic based on BFS levels */}
-      <div className="absolute top-0 left-0 right-0 h-16 flex items-center px-4 text-xs text-slate-400 font-semibold pointer-events-none">
-        <div style={{ marginLeft: '80px' }}>
-          {userProfile.currentVisa ? 'Current Visa' : 'Start'}
-        </div>
-        <div style={{ marginLeft: '200px' }}>
-          {userProfile.currentVisa ? 'Next Steps' : 'Entry Visas'}
-        </div>
-        <div style={{ marginLeft: '200px' }}>
-          {userProfile.currentVisa ? 'Future Options' : 'Intermediate'}
-        </div>
-        <div style={{ marginLeft: '200px' }}>
-          {userProfile.currentVisa ? 'Long-term Goals' : 'Advanced'}
-        </div>
+      {/* 上方欄位標題：對應 tier */}
+      <div className="absolute top-4 left-0 right-0 flex justify-start gap-[140px] px-8 text-xs text-slate-400 font-semibold pointer-events-none">
+        <div>{hasCurrent ? 'Current Visa' : 'Start / Entry'}</div>
+        <div>{hasCurrent ? 'Next Steps' : 'Entry Options'}</div>
+        <div>{hasCurrent ? 'Future Options' : 'Future Options'}</div>
+        <div>{hasCurrent ? 'Long-term Goals' : 'Long-term Goals'}</div>
       </div>
 
-      {/* SVG Canvas for Connection Lines */}
+      {/* SVG edge canvas */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
         {renderConnections()}
       </svg>
 
-      {/* Visa Nodes */}
+      {/* Nodes：往下 offset 一點避免頂到 */}
       <div className="relative w-full h-full pt-16">
         {renderVisaNodes()}
       </div>
@@ -591,77 +496,3 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
 };
 
 export default VisaMapRedesigned;
-
-/**
- * ============================================================================
- * IMPLEMENTATION SUMMARY - DYNAMIC VISA PATH COMPUTATION
- * ============================================================================
- * 
- * PROBLEM SOLVED:
- * Previous implementation used static, hard-coded tier classifications (entry/
- * intermediate/advanced) that didn't change based on the user's current visa.
- * This meant the map showed the same visas regardless of where the user was
- * in their visa journey.
- * 
- * NEW APPROACH - DYNAMIC BFS-BASED GRAPH:
- * 
- * 1. ADJACENCY GRAPH CONSTRUCTION:
- *    - Reads commonNextSteps from each visa in VISA_KNOWLEDGE_BASE
- *    - Builds directed graph: visaId → [nextVisaId1, nextVisaId2, ...]
- *    - Filters to only include allowed categories (student/worker/investor/immigrant)
- * 
- * 2. BREADTH-FIRST SEARCH (BFS):
- *    - Starts from userProfile.currentVisa (or START if none)
- *    - Level 0: Current visa
- *    - Level 1: Visas directly reachable via commonNextSteps
- *    - Level 2: Visas reachable from Level 1 (excluding visited)
- *    - Level 3: Visas reachable from Level 2
- * 
- * 3. REACHABILITY FILTERING:
- *    - Only visas reachable from current position are displayed
- *    - Unreachable visas are completely hidden from map
- *    - Creates focused, personalized visa progression view
- * 
- * 4. CATEGORY FILTERING:
- *    - Tourist/visitor visas excluded from main progression map
- *    - Only shows: student, worker, investor, immigrant visas
- * 
- * 5. DYNAMIC RE-COMPUTATION:
- *    - When currentVisa changes, entire graph is rebuilt via BFS
- *    - useMemo ensures efficient re-computation only when needed
- *    - Map automatically updates to show new paths from new position
- * 
- * 6. EDGE RENDERING:
- *    - Connections drawn based on actual commonNextSteps edges
- *    - No longer connects all nodes in adjacent tiers
- *    - Creates accurate, sparse graph of real visa pathways
- * 
- * BENEFITS:
- * - Personalized: Map adapts to user's current visa status
- * - Accurate: Shows only reachable paths from current position
- * - Dynamic: Updates automatically when currentVisa changes
- * - Data-driven: No hard-coded tier classifications
- * - Maintainable: Add/modify visa paths in knowledge base, map updates automatically
- * 
- * EXAMPLE SCENARIOS:
- * 
- * User with currentVisa = "f1" (F-1 Student):
- *   Level 0: F-1
- *   Level 1: OPT, H-1B, O-1, EB-2
- *   Level 2: (visas reachable from Level 1)
- *   → Shows student → work visa → green card path
- * 
- * User with currentVisa = "h1b" (H-1B Worker):
- *   Level 0: H-1B
- *   Level 1: EB-2, EB-1
- *   Level 2: Naturalization
- *   → Shows work visa → green card path (no student visas shown)
- * 
- * User with currentVisa = null (No visa yet):
- *   Level 0: START
- *   Level 1: Entry-level visas (F-1, J-1)
- *   Level 2-3: Empty until visa selected
- *   → Shows entry options for new users
- * 
- * ============================================================================
- */
