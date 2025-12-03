@@ -100,7 +100,8 @@ export const VISA_KNOWLEDGE_BASE: Visa[] = [
     difficulty: "medium",
     notes:
       "F-1 can often lead to work authorization options such as OPT, and sometimes onward to H-1B, O-1, or employment-based green cards.",
-    commonNextSteps: ["OPT", "H1B", "O1", "EB2"],
+    commonNextSteps: ["OPT", "H1B", "O1", "EB2", "L1B", "E2", "O1"
+    ],
   },
 
   // ---------------------------------------------------------------------------
@@ -142,7 +143,7 @@ export const VISA_KNOWLEDGE_BASE: Visa[] = [
     difficulty: "medium",
     notes:
       "OPT is not a separate visa status but a benefit of F-1. It often serves as a bridge to H-1B, O-1, L-1, or employment-based green cards.",
-    commonNextSteps: ["H1B", "O1", "L1B", "EB2"],
+    commonNextSteps: ["H1B", "O1", "L1B", "EB2", "E2"],
   },
 
   // ---------------------------------------------------------------------------
@@ -153,7 +154,7 @@ export const VISA_KNOWLEDGE_BASE: Visa[] = [
     shortName: "H-1B",
     name: "H-1B Specialty Occupation Worker",
     category: "work",
-    stage: "next",
+    stage: "future",
     iconEmoji: "📦",
     tags: ["employer-sponsored", "specialty occupation"],
     officialDescription:
@@ -325,7 +326,7 @@ export const VISA_KNOWLEDGE_BASE: Visa[] = [
     shortName: "EB-2",
     name: "EB-2 Employment-Based Immigrant Visa",
     category: "immigrant",
-    stage: "future",
+    stage: "long_term",
     iconEmoji: "🏆",
     tags: ["green card", "advanced degree", "exceptional ability"],
     officialDescription:
@@ -367,7 +368,7 @@ export const VISA_KNOWLEDGE_BASE: Visa[] = [
     shortName: "EB-1C",
     name: "EB-1C Multinational Manager or Executive",
     category: "immigrant",
-    stage: "future",
+    stage: "long_term",
     iconEmoji: "🏢",
     tags: ["green card", "multinational manager", "executive"],
     officialDescription:
