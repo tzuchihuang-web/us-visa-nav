@@ -256,5 +256,41 @@ export const visaKnowledgeBase: Visa[] = [
     difficulty: "high",
     notes: "Fast employment-based route to permanent residence for those who qualify.",
     commonNextSteps: ["Naturalization"]
+  },
+  {
+    id: "NATURALIZATION",
+    name: "U.S. Citizenship (Naturalization)",
+    category: "immigrant",
+    officialDescription: "Naturalization is the process by which a lawful permanent resident becomes a U.S. citizen.",
+    officialLinks: [
+      "https://www.uscis.gov/citizenship/learn-about-citizenship/naturalization"
+    ],
+    eligibilityCriteria: [
+      "Must be a lawful permanent resident (green card holder)",
+      "Typically must have maintained permanent residence for 3–5 years, depending on the category",
+      "Must meet physical presence and continuous residence requirements",
+      "Must demonstrate good moral character",
+      "Must pass English and civics tests (with some exceptions)"
+    ],
+    requiredDocuments: [
+      "Form N-400, Application for Naturalization",
+      "Green card (Form I-551) copy",
+      "Proof of residence and physical presence",
+      "Marriage certificate (if applying based on marriage to a U.S. citizen)",
+      "Tax records and supporting documents"
+    ],
+    typicalProcessSteps: [
+      "Confirm eligibility (permanent residence duration, travel history, etc.)",
+      "Prepare and file Form N-400 with USCIS",
+      "Attend biometrics (fingerprints) appointment if required",
+      "Attend naturalization interview and civics/English tests",
+      "Receive decision on your application",
+      "If approved, attend oath ceremony and receive Certificate of Naturalization"
+    ],
+    timeHorizon: "long",
+    difficulty: "high",
+    notes: "This is typically the final step after holding a green card (permanent residence) for several years.",
+    commonNextSteps: []
   }
+
 ];
