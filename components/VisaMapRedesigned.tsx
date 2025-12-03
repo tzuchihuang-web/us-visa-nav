@@ -1,40 +1,37 @@
 'use client';
 
 /**
- * VISA MAP REDESIGNED - PHASE 4 WITH KNOWLEDGE BASE INTEGRATION
+ * VISA MAP REDESIGNED - DYNAMIC PATH COMPUTATION
  * 
  * ============================================================================
- * INTEGRATION WITH NEW VISA KNOWLEDGE BASE & MATCHING ENGINE
+ * DYNAMIC VISA GRAPH COMPUTATION VIA BFS
  * ============================================================================
  * 
- * This component now:
- * 1. Uses visa knowledge base (VISA_KNOWLEDGE_BASE) for all visa data
- * 2. Calls matching engine (getVisaRecommendations) to score visas
- * 3. Shows user's currentVisa as Level 0 starting point
- * 4. Hides generic START node if user has current visa
- * 5. Displays visa eligibility with soft language ("may be eligible")
+ * This component dynamically computes visa paths using breadth-first search (BFS)
+ * based on the user's current visa and the commonNextSteps relationships in the
+ * visa knowledge base.
+ * 
+ * KEY FEATURES:
+ * 1. Builds adjacency graph from VISA_KNOWLEDGE_BASE.commonNextSteps
+ * 2. Performs BFS from currentVisa to compute reachable visa tiers (levels 0-3)
+ * 3. Only shows visas that are actually reachable from current position
+ * 4. Filters out tourist/visitor categories from main map display
+ * 5. Recomputes entire graph when currentVisa changes
+ * 
+ * TIER COMPUTATION (BFS-based):
+ * - Level 0: Current visa (or START if none)
+ * - Level 1: Visas directly reachable via commonNextSteps from Level 0
+ * - Level 2: Visas reachable from Level 1 (excluding already visited)
+ * - Level 3: Visas reachable from Level 2 (and so on)
+ * 
+ * CATEGORY FILTERING:
+ * - Includes: student, worker, investor, immigrant categories
+ * - Excludes: tourist, visitor, family, special categories
  * 
  * DATA FLOW:
- * - Input: userProfile (UserProfile object from matching engine)
- * - userProfile contains: education, experience, field, country, language, investment, currentVisa
- * - Engine scores all visas and returns: recommended/available/locked status
- * - Component renders tiers based on scores and currentVisa
- * 
- * STARTING POINT LOGIC:
- * - If userProfile.currentVisa is NULL: Show START node at Level 0
- * - If userProfile.currentVisa is "f1": Show F-1 visa as Level 0 with highlight
- * - Level 0 visa node is larger, glowing, labeled "You are here (Current visa: F-1)"
- * 
- * MAP LAYOUT:
- * - Level 0: Current visa (or START if none) - HIGHLIGHTED
- * - Level 1: Entry-level visas (F-1, J-1, B-2)
- * - Level 2: Intermediate visas (OPT, H-1B, L-1B, O-1)
- * - Level 3: Advanced visas (EB-5, EB-2GC, EB-1A, EB-1C)
- * 
- * NODE COLORS:
- * - Green: Recommended (90%+ requirements match)
- * - Blue: Available (50%+ requirements match)
- * - Gray/Dashed: Locked (<50% requirements match)
+ * - userProfile.currentVisa → Build adjacency graph → BFS traversal → Dynamic tiers
+ * - Matching engine scores all reachable visas for eligibility (green/blue/gray)
+ * - Map re-renders when currentVisa changes with new tier structure
  * 
  * ============================================================================
  */
@@ -79,106 +76,169 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   );
 
   // ========================================================================
-  // ORGANIZE VISAS BY TIER + STARTING POINT
+  // DYNAMIC TIER COMPUTATION VIA BFS
   // ========================================================================
-  // FILTER CATEGORIES (exclude tourist visas):
-  // - Include: student, worker, investor, immigrant
-  // - Exclude: tourist, visitor, family, special
+  
+  /**
+   * CATEGORY FILTERING
+   * Only include these categories on the main visa map.
+   * Tourist/visitor visas are excluded from the progression path.
+   */
   const INCLUDED_CATEGORIES = ['student', 'worker', 'investor', 'immigrant'];
 
-  const visasByTier = useMemo(() => {
-    const tiers: Record<string, string[]> = {
-      current: [], // Level 0: User's current visa (if any) or START
-      entry: [],
-      intermediate: [],
-      advanced: [],
-    };
-
-    console.info('[VisaMapRedesigned] Building visa tier structure. Current visa from profile:', userProfile.currentVisa);
-
-    // Level 0: Current visa or START node
-    if (userProfile.currentVisa) {
-      // User has visa: show that visa as starting point
-      // But only if it's a work/long-term visa (not tourist)
-      // IMPORTANT: currentVisa is already in knowledge base format (f1, h1b, etc.) - no normalization needed
-      const visaId = userProfile.currentVisa;
-      const currentVisa = VISA_KNOWLEDGE_BASE[visaId];
-      
-      console.info('[VisaMapRedesigned] Building visa tier structure. Current visa from profile:', visaId);
-      console.info('[VisaMapRedesigned] Looking up visa in knowledge base:', visaId);
-      console.info('[VisaMapRedesigned] Found visa definition:', currentVisa ? `${currentVisa.name} (${currentVisa.category})` : 'NOT FOUND');
-      
-      if (currentVisa && INCLUDED_CATEGORIES.includes(currentVisa.category)) {
-        console.info('[VisaMapRedesigned] ✓ Current visa is eligible (category:', currentVisa.category, '), showing as Level 0');
-        tiers.current = [visaId];
-      } else {
-        console.warn('[VisaMapRedesigned] Current visa category not eligible or not found, showing START instead');
-        console.warn('[VisaMapRedesigned] Available visa IDs in knowledge base:', Object.keys(VISA_KNOWLEDGE_BASE).join(', '));
-        tiers.current = ['start'];
-      }
-    } else {
-      // User has no visa: show START node
-      console.info('[VisaMapRedesigned] No currentVisa set, showing START node at Level 0');
-      tiers.current = ['start'];
-    }
-
-    // Levels 1-3: Other visas organized by tier from knowledge base
-    // FILTER: Only include work/long-term categories, skip tourist
+  /**
+   * BUILD ADJACENCY GRAPH FROM VISA KNOWLEDGE BASE
+   * 
+   * Creates a directed graph where each visa points to its commonNextSteps.
+   * This adjacency list is used for BFS traversal to find reachable visas.
+   * 
+   * Structure: { visaId: [nextVisaId1, nextVisaId2, ...] }
+   * Example: { f1: ['opt', 'h1b', 'eb2gc'], opt: ['h1b', 'o1', 'eb2gc'], ... }
+   */
+  const adjacencyGraph = useMemo(() => {
+    const graph: Record<string, string[]> = {};
+    
     Object.keys(VISA_KNOWLEDGE_BASE).forEach((visaId) => {
       const visa = VISA_KNOWLEDGE_BASE[visaId];
-
-      // SKIP if not in included categories (e.g., skip B-2 tourist)
+      
+      // Only include visas from allowed categories
       if (!INCLUDED_CATEGORIES.includes(visa.category)) {
         return;
       }
+      
+      // Extract next step visa IDs from commonNextSteps
+      const nextSteps = visa.commonNextSteps
+        ?.map(step => step.visaId.toLowerCase())
+        .filter(nextId => {
+          const nextVisa = VISA_KNOWLEDGE_BASE[nextId];
+          // Only include next steps that are in allowed categories
+          return nextVisa && INCLUDED_CATEGORIES.includes(nextVisa.category);
+        }) || [];
+      
+      graph[visaId] = nextSteps;
+    });
+    
+    console.info('[VisaMapRedesigned] Built adjacency graph:', graph);
+    return graph;
+  }, []);
 
-      // Skip if this is the current visa (already at Level 0)
-      // IMPORTANT: currentVisa is already in knowledge base format, direct comparison
-      if (visaId === userProfile.currentVisa) {
-        console.info('[VisaMapRedesigned] Skipping visa', visaId, '(already showing at Level 0 as current visa)');
-        return;
+  /**
+   * COMPUTE TIERS VIA BREADTH-FIRST SEARCH (BFS)
+   * 
+   * Starting from the current visa (or START), perform BFS to assign each
+   * reachable visa to a tier/level based on its distance from the starting point.
+   * 
+   * Algorithm:
+   * 1. Start with currentVisa at Level 0
+   * 2. Add all visas reachable from Level 0 to Level 1 (via commonNextSteps)
+   * 3. Add all visas reachable from Level 1 to Level 2 (excluding visited)
+   * 4. Continue until no more reachable visas
+   * 
+   * Special case: If no currentVisa, show entry-level visas at Level 1
+   * (START node behavior for new users)
+   */
+  const visasByTier = useMemo(() => {
+    const tiers: Record<string, string[]> = {
+      level0: [],
+      level1: [],
+      level2: [],
+      level3: [],
+    };
+
+    console.info('[VisaMapRedesigned] Computing dynamic tiers. Current visa:', userProfile.currentVisa);
+
+    // CASE 1: User has a current visa - build reachable graph from that visa
+    if (userProfile.currentVisa) {
+      const startVisaId = userProfile.currentVisa.toLowerCase();
+      const startVisa = VISA_KNOWLEDGE_BASE[startVisaId];
+      
+      // Validate current visa exists and is in allowed categories
+      if (!startVisa || !INCLUDED_CATEGORIES.includes(startVisa.category)) {
+        console.warn('[VisaMapRedesigned] Current visa not found or not in allowed categories:', startVisaId);
+        // Fall through to CASE 2 (show entry visas)
+      } else {
+        console.info('[VisaMapRedesigned] Starting BFS from:', startVisaId);
+        
+        // BFS IMPLEMENTATION
+        const visited = new Set<string>();
+        const queue: Array<{ visaId: string; level: number }> = [{ visaId: startVisaId, level: 0 }];
+        
+        visited.add(startVisaId);
+        tiers.level0.push(startVisaId);
+        
+        while (queue.length > 0) {
+          const { visaId, level } = queue.shift()!;
+          const nextSteps = adjacencyGraph[visaId] || [];
+          
+          // Process each connected visa
+          for (const nextVisaId of nextSteps) {
+            if (visited.has(nextVisaId)) continue;
+            
+            visited.add(nextVisaId);
+            const nextLevel = level + 1;
+            
+            // Assign to appropriate tier (cap at level 3)
+            if (nextLevel === 1) {
+              tiers.level1.push(nextVisaId);
+              queue.push({ visaId: nextVisaId, level: nextLevel });
+            } else if (nextLevel === 2) {
+              tiers.level2.push(nextVisaId);
+              queue.push({ visaId: nextVisaId, level: nextLevel });
+            } else if (nextLevel === 3) {
+              tiers.level3.push(nextVisaId);
+              // Don't queue level 3+ to prevent infinite expansion
+            }
+          }
+        }
+        
+        console.info('[VisaMapRedesigned] BFS complete. Tiers:', {
+          level0: tiers.level0,
+          level1: tiers.level1,
+          level2: tiers.level2,
+          level3: tiers.level3,
+        });
+        
+        return tiers;
       }
-
-      // Skip START node (handled separately above)
-      if (visaId === 'start') {
-        return;
-      }
-
-      // Organize by tier
-      const tier = visa.tier;
-      if (tier === 'entry' && !tiers.entry.includes(visaId)) {
-        tiers.entry.push(visaId);
-      } else if (tier === 'intermediate' && !tiers.intermediate.includes(visaId)) {
-        tiers.intermediate.push(visaId);
-      } else if (tier === 'advanced' && !tiers.advanced.includes(visaId)) {
-        tiers.advanced.push(visaId);
+    }
+    
+    // CASE 2: No current visa - show START node + entry-level visas
+    console.info('[VisaMapRedesigned] No current visa - showing START + entry visas');
+    tiers.level0 = ['start'];
+    
+    // Show entry-level visas at Level 1
+    Object.keys(VISA_KNOWLEDGE_BASE).forEach((visaId) => {
+      const visa = VISA_KNOWLEDGE_BASE[visaId];
+      if (visaId !== 'start' && 
+          INCLUDED_CATEGORIES.includes(visa.category) && 
+          visa.tier === 'entry') {
+        tiers.level1.push(visaId);
       }
     });
-
-    console.info('[VisaMapRedesigned] Final tier structure:', tiers);
+    
+    console.info('[VisaMapRedesigned] Entry-level visas:', tiers.level1);
     return tiers;
-  }, [userProfile.currentVisa]);
+  }, [userProfile.currentVisa, adjacencyGraph]);
 
   // ========================================================================
   // TIER ORDERING & POSITIONING
   // ========================================================================
-  // MAP POSITIONING LOGIC:
-  // X-axis (horizontal):
-  // - Uses tier ordering: current → entry → intermediate → advanced
-  // - Reflects progression time: short-term visas left, long-term right
-  // - timeHorizon field from knowledge base could further refine spacing
-  //
-  // Y-axis (vertical):
-  // - Uses difficulty field to position harder visas higher
-  // - Centers visas within their tier based on difficulty
-  // - Creates visual hierarchy: easier paths lower, harder paths higher
-  //
-  // Node size/styling:
-  // - requiredEligibilityScore influences visual weight
-  // - Status colors (green/blue/gray) show eligibility
   
-  const tierOrder = ['current', 'entry', 'intermediate', 'advanced'];
+  /**
+   * TIER ORDERING (BFS Levels)
+   * Maps BFS levels to display positions on the map
+   */
+  const tierOrder = ['level0', 'level1', 'level2', 'level3'];
 
+  /**
+   * CALCULATE VISA NODE POSITION
+   * 
+   * Positions visas on a 2D map based on:
+   * - X-axis: BFS level (level0 → level1 → level2 → level3, left to right)
+   * - Y-axis: Index within tier + difficulty adjustment (vertical spread)
+   * 
+   * This creates a visual flow showing visa progression paths.
+   */
   const getVisaPosition = (tier: string, index: number, total: number, visa?: any) => {
     const tierIdx = tierOrder.indexOf(tier);
     const tierX = 80 + tierIdx * 220; // Horizontal spacing between tiers
@@ -203,22 +263,55 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   };
 
   // ========================================================================
-  // RENDER CONNECTIONS (LINES) BETWEEN TIERS
+  // RENDER CONNECTIONS (LINES) BETWEEN VISAS
   // ========================================================================
+  
+  /**
+   * RENDER CONNECTION LINES BASED ON ACTUAL commonNextSteps EDGES
+   * 
+   * Instead of connecting all nodes in adjacent tiers, this renders only
+   * the actual edges defined in the visa knowledge base via commonNextSteps.
+   * 
+   * This creates a more accurate, sparse graph showing real visa pathways.
+   * 
+   * Line styling:
+   * - Green (solid): Recommended next steps (high eligibility)
+   * - Blue (solid): Available next steps (medium eligibility)
+   * - Gray (dashed): Locked next steps (low eligibility)
+   */
   const renderConnections = () => {
     const lines: React.ReactNode[] = [];
     let lineId = 0;
 
-    for (let i = 0; i < tierOrder.length - 1; i++) {
-      const currentTier = tierOrder[i];
-      const nextTier = tierOrder[i + 1];
-      const currentVisas = visasByTier[currentTier] || [];
-      const nextVisas = visasByTier[nextTier] || [];
+    // Build a map of visaId -> {tier, index} for position lookups
+    const visaPositionMap = new Map<string, { tier: string; index: number; total: number }>();
+    tierOrder.forEach((tier) => {
+      const visas = visasByTier[tier] || [];
+      visas.forEach((visaId, index) => {
+        visaPositionMap.set(visaId, { tier, index, total: visas.length });
+      });
+    });
 
-      currentVisas.forEach((_, currentIdx) => {
-        nextVisas.forEach((nextVisaId, nextIdx) => {
-          const currentPos = getVisaPosition(currentTier, currentIdx, currentVisas.length);
-          const nextPos = getVisaPosition(nextTier, nextIdx, nextVisas.length);
+    // Render edges based on commonNextSteps in adjacency graph
+    tierOrder.forEach((tier) => {
+      const visasInTier = visasByTier[tier] || [];
+      
+      visasInTier.forEach((visaId) => {
+        const currentPosData = visaPositionMap.get(visaId);
+        if (!currentPosData) return;
+        
+        const currentVisa = VISA_KNOWLEDGE_BASE[visaId];
+        const currentPos = getVisaPosition(currentPosData.tier, currentPosData.index, currentPosData.total, currentVisa);
+        
+        // Get next steps from adjacency graph
+        const nextSteps = adjacencyGraph[visaId] || [];
+        
+        nextSteps.forEach((nextVisaId) => {
+          const nextPosData = visaPositionMap.get(nextVisaId);
+          if (!nextPosData) return; // Next visa not displayed (filtered out or not reachable)
+          
+          const nextVisa = VISA_KNOWLEDGE_BASE[nextVisaId];
+          const nextPos = getVisaPosition(nextPosData.tier, nextPosData.index, nextPosData.total, nextVisa);
           const nextStatus = visaRecommendations[nextVisaId]?.status || 'locked';
           const lineStyle = getLineStyle(nextStatus);
 
@@ -235,7 +328,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
           );
         });
       });
-    }
+    });
 
     return lines;
   };
@@ -243,18 +336,30 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   // ========================================================================
   // RENDER VISA NODES
   // ========================================================================
+  
+  /**
+   * RENDER VISA NODES ON THE MAP
+   * 
+   * Renders each visa as a circular node positioned according to its BFS level.
+   * 
+   * Node features:
+   * - Level 0 (current visa): Larger size, glowing ring, "You are here" label
+   * - Color coding: Green (recommended), Blue (available), Gray (locked)
+   * - Interactive: Hover tooltips, click to view details
+   * - Status labels: "May be eligible", "Could be a path", "Requirements not met"
+   */
   const renderVisaNodes = () => {
     const nodes: React.ReactNode[] = [];
 
     tierOrder.forEach((tier) => {
       const visaIds = visasByTier[tier] || [];
-      const isCurrentTier = tier === 'current';
+      const isCurrentTier = tier === 'level0'; // Level 0 is current visa
 
       visaIds.forEach((visaId, index) => {
         const visa = VISA_KNOWLEDGE_BASE[visaId];
         const status = visaRecommendations[visaId]?.status || 'locked';
         const isSelected = selectedVisa === visaId;
-        const isCurrentVisa = isCurrentTier && userProfile.currentVisa;
+        const isCurrentVisa = isCurrentTier && userProfile.currentVisa && visaId === userProfile.currentVisa;
 
         if (!visa) return; // Skip if visa not found
 
@@ -341,12 +446,20 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
         </div>
       </div>
 
-      {/* Tier Labels */}
+      {/* Tier Labels - Dynamic based on BFS levels */}
       <div className="absolute top-0 left-0 right-0 h-16 flex items-center px-4 text-xs text-slate-400 font-semibold pointer-events-none">
-        <div style={{ marginLeft: '80px' }}>Current</div>
-        <div style={{ marginLeft: '200px' }}>Entry Level</div>
-        <div style={{ marginLeft: '200px' }}>Intermediate</div>
-        <div style={{ marginLeft: '200px' }}>Advanced</div>
+        <div style={{ marginLeft: '80px' }}>
+          {userProfile.currentVisa ? 'Current Visa' : 'Start'}
+        </div>
+        <div style={{ marginLeft: '200px' }}>
+          {userProfile.currentVisa ? 'Next Steps' : 'Entry Visas'}
+        </div>
+        <div style={{ marginLeft: '200px' }}>
+          {userProfile.currentVisa ? 'Future Options' : 'Intermediate'}
+        </div>
+        <div style={{ marginLeft: '200px' }}>
+          {userProfile.currentVisa ? 'Long-term Goals' : 'Advanced'}
+        </div>
       </div>
 
       {/* SVG Canvas for Connection Lines */}
@@ -363,3 +476,77 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
 };
 
 export default VisaMapRedesigned;
+
+/**
+ * ============================================================================
+ * IMPLEMENTATION SUMMARY - DYNAMIC VISA PATH COMPUTATION
+ * ============================================================================
+ * 
+ * PROBLEM SOLVED:
+ * Previous implementation used static, hard-coded tier classifications (entry/
+ * intermediate/advanced) that didn't change based on the user's current visa.
+ * This meant the map showed the same visas regardless of where the user was
+ * in their visa journey.
+ * 
+ * NEW APPROACH - DYNAMIC BFS-BASED GRAPH:
+ * 
+ * 1. ADJACENCY GRAPH CONSTRUCTION:
+ *    - Reads commonNextSteps from each visa in VISA_KNOWLEDGE_BASE
+ *    - Builds directed graph: visaId → [nextVisaId1, nextVisaId2, ...]
+ *    - Filters to only include allowed categories (student/worker/investor/immigrant)
+ * 
+ * 2. BREADTH-FIRST SEARCH (BFS):
+ *    - Starts from userProfile.currentVisa (or START if none)
+ *    - Level 0: Current visa
+ *    - Level 1: Visas directly reachable via commonNextSteps
+ *    - Level 2: Visas reachable from Level 1 (excluding visited)
+ *    - Level 3: Visas reachable from Level 2
+ * 
+ * 3. REACHABILITY FILTERING:
+ *    - Only visas reachable from current position are displayed
+ *    - Unreachable visas are completely hidden from map
+ *    - Creates focused, personalized visa progression view
+ * 
+ * 4. CATEGORY FILTERING:
+ *    - Tourist/visitor visas excluded from main progression map
+ *    - Only shows: student, worker, investor, immigrant visas
+ * 
+ * 5. DYNAMIC RE-COMPUTATION:
+ *    - When currentVisa changes, entire graph is rebuilt via BFS
+ *    - useMemo ensures efficient re-computation only when needed
+ *    - Map automatically updates to show new paths from new position
+ * 
+ * 6. EDGE RENDERING:
+ *    - Connections drawn based on actual commonNextSteps edges
+ *    - No longer connects all nodes in adjacent tiers
+ *    - Creates accurate, sparse graph of real visa pathways
+ * 
+ * BENEFITS:
+ * - Personalized: Map adapts to user's current visa status
+ * - Accurate: Shows only reachable paths from current position
+ * - Dynamic: Updates automatically when currentVisa changes
+ * - Data-driven: No hard-coded tier classifications
+ * - Maintainable: Add/modify visa paths in knowledge base, map updates automatically
+ * 
+ * EXAMPLE SCENARIOS:
+ * 
+ * User with currentVisa = "f1" (F-1 Student):
+ *   Level 0: F-1
+ *   Level 1: OPT, H-1B, O-1, EB-2
+ *   Level 2: (visas reachable from Level 1)
+ *   → Shows student → work visa → green card path
+ * 
+ * User with currentVisa = "h1b" (H-1B Worker):
+ *   Level 0: H-1B
+ *   Level 1: EB-2, EB-1
+ *   Level 2: Naturalization
+ *   → Shows work visa → green card path (no student visas shown)
+ * 
+ * User with currentVisa = null (No visa yet):
+ *   Level 0: START
+ *   Level 1: Entry-level visas (F-1, J-1)
+ *   Level 2-3: Empty until visa selected
+ *   → Shows entry options for new users
+ * 
+ * ============================================================================
+ */

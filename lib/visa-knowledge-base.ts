@@ -166,6 +166,40 @@ export interface VisaDefinition {
 
 export const VISA_KNOWLEDGE_BASE: Record<string, VisaDefinition> = {
   // ========================================================================
+  // STARTING POINT (for users without a visa)
+  // ========================================================================
+
+  start: {
+    id: 'start',
+    code: 'START',
+    name: 'Starting Point',
+    emoji: '🚀',
+    category: 'special',
+    tier: 'start',
+    officialDescription: 'Starting point for visa journey - explore your options',
+    shortDescription: 'Begin your U.S. visa journey',
+    typicalProfile: 'Individuals exploring U.S. visa options',
+    eligibilityRules: [],
+    requirements: {
+      documents: [],
+      processing: [],
+      financial: [],
+    },
+    processSteps: [],
+    estimatedTotalTime: 'N/A',
+    commonNextSteps: [
+      { visaId: 'f1', reason: 'Study at a U.S. university' },
+      { visaId: 'j1', reason: 'Participate in exchange programs' },
+    ],
+    commonPreviousVisas: [],
+    officialLinks: [],
+    notes: 'This is a placeholder node for users who have not yet obtained a U.S. visa.',
+    timeHorizon: 'short',
+    difficulty: 1,
+    requiredEligibilityScore: 0,
+  },
+
+  // ========================================================================
   // ENTRY-LEVEL: Student & Exchange Visitors
   // ========================================================================
 
