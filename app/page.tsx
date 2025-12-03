@@ -30,9 +30,17 @@ export default function Home() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [selectedVisa, setSelectedVisa] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [refreshMapKey, setRefreshMapKey] = useState(0); // Key to force map re-render on save
 
   // Load user profile directly from Supabase
-  const { profile: visaProfile, loading: profileLoading } = useVisaNavigatorProfile(user?.id);
+  const {
+    profile: visaProfile,
+    loading: profileLoading,
+    isSaving,
+    error: profileError,
+    updateProfile,
+    saveProfile,
+  } = useVisaNavigatorProfile(user?.id);
 
   // FIRST-TIME USER CHECK: Verify onboarding completion via Supabase
   useEffect(() => {
@@ -57,6 +65,14 @@ export default function Home() {
     setSelectedVisa(visaCode);
     setIsPanelOpen(true);
   };
+  const handleSaveProfile = async (): Promise<boolean> => {
+    const success = await saveProfile();
+    if (success) {
+      // Force map re-render by changing key
+      setRefreshMapKey(prev => prev + 1);
+    }
+    return success;
+  };
 
   if (authLoading || !onboardingChecked || profileLoading || !visaProfile) {
     return (
@@ -77,11 +93,18 @@ export default function Home() {
           {/* Map Container */}
           <div className="flex flex-1 overflow-hidden">
             {/* Left Sidebar: Profile Qualifications Editor */}
-            <QualificationsPanel />
+            <QualificationsPanel
+              userProfile={visaProfile}
+              onUpdateProfile={updateProfile}
+              onSaveProfile={handleSaveProfile}
+              isSaving={isSaving}
+              error={profileError}
+            />
 
             {/* Right Main Area: Hierarchical Visa Map */}
             <div className="flex-1 relative">
-              <VisaMapRedesigned 
+              <VisaMapRedesigned
+                key={`visa-map-${refreshMapKey}`}
                 userProfile={visaProfile}
                 selectedVisa={selectedVisa}
                 onVisaSelect={handleVisaSelect}

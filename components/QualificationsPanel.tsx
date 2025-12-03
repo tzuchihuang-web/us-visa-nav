@@ -2,25 +2,45 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '@/lib/types';
-import { useDebouncedProfileSave } from '@/lib/hooks/useVisaNavigatorProfile';
-import { useAuth } from '@/lib/hooks/useAuth';
+
+interface QualificationsPanelProps {
+  userProfile: UserProfile | null;
+  onUpdateProfile: (updates: Partial<UserProfile>) => Promise<boolean>;
+  onSaveProfile: () => Promise<boolean>;
+  isSaving?: boolean;
+  error?: string | null;
+}
 
 /**
  * QualificationsPanel
  * 
  * Left sidebar component for editing user profile qualifications.
  * Features:
- * - Auto-saves changes to Supabase with 1 second debounce
- * - Real-time visa map updates as profile changes
- * - Clean, simple form layout
+ * - Manual save via "Save Changes" button
+ * - Shows loading state during save
+ * - Shows success message after save
  * - Error handling with user feedback
+ * - Props-based integration (not self-contained)
  */
 
-export function QualificationsPanel() {
-  const { user } = useAuth();
-  const { profile, updateProfile } = useDebouncedProfileSave(user?.id, 1000);
-  const [error, setError] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+export function QualificationsPanel({
+  userProfile,
+  onUpdateProfile,
+  onSaveProfile,
+  isSaving = false,
+  error: externalError = null,
+}: QualificationsPanelProps) {
+  const [localChanges, setLocalChanges] = useState<Partial<UserProfile>>({});
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(externalError);
+
+  // Clear success message after 3 seconds
+  useEffect(() => {
+    if (saveSuccess) {
+      const timer = setTimeout(() => setSaveSuccess(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [saveSuccess]);
 
   // Clear error after 5 seconds
   useEffect(() => {
@@ -30,7 +50,7 @@ export function QualificationsPanel() {
     }
   }, [error]);
 
-  if (!profile) {
+  if (!userProfile) {
     return (
       <div className="p-4 text-center text-gray-500">
         <div className="animate-pulse">Loading profile...</div>
@@ -38,18 +58,33 @@ export function QualificationsPanel() {
     );
   }
 
-  const handleFieldChange = async (field: keyof UserProfile, value: any) => {
+  // Combine base profile with local changes for display
+  const displayProfile = { ...userProfile, ...localChanges };
+
+  const handleFieldChange = (field: keyof UserProfile, value: any) => {
+    setLocalChanges(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveChanges = async () => {
     try {
-      setSaveStatus('saving');
-      await updateProfile({ [field]: value });
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 1500);
+      setError(null);
+      // Apply local changes to profile
+      await onUpdateProfile(localChanges);
+      // Save to Supabase
+      const success = await onSaveProfile();
+      if (success) {
+        setSaveSuccess(true);
+        setLocalChanges({}); // Clear local changes after successful save
+      } else {
+        setError('Failed to save profile changes');
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save';
       setError(message);
-      setSaveStatus('idle');
     }
   };
+
+  const hasChanges = Object.keys(localChanges).length > 0;
 
   return (
     <div className="w-80 border-r border-gray-200 overflow-y-auto bg-gray-50 flex flex-col">
@@ -57,11 +92,18 @@ export function QualificationsPanel() {
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
         <h2 className="text-lg font-semibold text-gray-900">Your Profile</h2>
         <p className="text-xs text-gray-600 mt-1">
-          {saveStatus === 'saving' && '💾 Saving...'}
-          {saveStatus === 'saved' && '✓ Saved'}
-          {saveStatus === 'idle' && 'Changes auto-save'}
+          {hasChanges && '✏️ You have unsaved changes'}
+          {!hasChanges && '✓ Profile saved'}
         </p>
       </div>
+
+      {/* Success Message */}
+      {saveSuccess && (
+        <div className="mx-4 mt-4 p-3 bg-green-50 border border-green-200 rounded text-xs text-green-700 flex items-center gap-2">
+          <span>✓</span>
+          <span>Changes saved successfully!</span>
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (
@@ -71,7 +113,7 @@ export function QualificationsPanel() {
       )}
 
       {/* Form */}
-      <div className="flex-1 p-4 space-y-4">
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
         {/* Current Visa */}
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -79,7 +121,7 @@ export function QualificationsPanel() {
           </label>
           <input
             type="text"
-            value={profile.currentVisa || 'None'}
+            value={displayProfile.currentVisa || ''}
             onChange={(e) => handleFieldChange('currentVisa', e.target.value || null)}
             placeholder="e.g., F-1, H-1B"
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -95,7 +137,7 @@ export function QualificationsPanel() {
             Education Level
           </label>
           <select
-            value={profile.educationLevel || 'other'}
+            value={displayProfile.educationLevel || 'other'}
             onChange={(e) => handleFieldChange('educationLevel', e.target.value)}
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
@@ -116,7 +158,7 @@ export function QualificationsPanel() {
             type="number"
             min="0"
             max="60"
-            value={profile.yearsOfExperience || 0}
+            value={displayProfile.yearsOfExperience || 0}
             onChange={(e) => handleFieldChange('yearsOfExperience', parseInt(e.target.value) || 0)}
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
@@ -129,7 +171,7 @@ export function QualificationsPanel() {
           </label>
           <input
             type="text"
-            value={profile.fieldOfWork || ''}
+            value={displayProfile.fieldOfWork || ''}
             onChange={(e) => handleFieldChange('fieldOfWork', e.target.value)}
             placeholder="e.g., Technology, Finance"
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -143,7 +185,7 @@ export function QualificationsPanel() {
           </label>
           <input
             type="text"
-            value={profile.countryOfCitizenship || 'US'}
+            value={displayProfile.countryOfCitizenship || 'US'}
             onChange={(e) => handleFieldChange('countryOfCitizenship', e.target.value)}
             placeholder="e.g., India, Canada"
             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -163,7 +205,7 @@ export function QualificationsPanel() {
               type="range"
               min="0"
               max="5"
-              value={profile.englishProficiency || 0}
+              value={displayProfile.englishProficiency || 0}
               onChange={(e) => handleFieldChange('englishProficiency', parseInt(e.target.value))}
               className="w-full"
             />
@@ -173,7 +215,7 @@ export function QualificationsPanel() {
               <span>5: Fluent</span>
             </div>
             <p className="text-xs bg-blue-50 p-2 rounded text-blue-700">
-              Current: {['None', 'Basic', 'Limited', 'Intermediate', 'Advanced', 'Fluent'][profile.englishProficiency || 0]}
+              Current: {['None', 'Basic', 'Limited', 'Intermediate', 'Advanced', 'Fluent'][displayProfile.englishProficiency || 0]}
             </p>
           </div>
         </div>
@@ -188,7 +230,7 @@ export function QualificationsPanel() {
             <input
               type="number"
               min="0"
-              value={profile.investmentAmount || 0}
+              value={displayProfile.investmentAmount || 0}
               onChange={(e) => handleFieldChange('investmentAmount', parseFloat(e.target.value) || 0)}
               placeholder="0"
               className="w-full pl-6 pr-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -200,10 +242,21 @@ export function QualificationsPanel() {
         </div>
       </div>
 
-      {/* Footer Info */}
-      <div className="border-t border-gray-200 bg-white p-4">
+      {/* Save Button */}
+      <div className="border-t border-gray-200 bg-white p-4 space-y-3">
+        <button
+          onClick={handleSaveChanges}
+          disabled={!hasChanges || isSaving}
+          className={`w-full py-2 px-3 rounded font-medium text-sm transition ${
+            hasChanges && !isSaving
+              ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          {isSaving ? '💾 Saving...' : 'Save Changes'}
+        </button>
         <p className="text-xs text-gray-600 leading-relaxed">
-          <span className="font-semibold">💡 Tip:</span> Update your profile to see personalized visa recommendations on the map.
+          <span className="font-semibold">💡 Tip:</span> Click "Save Changes" to update your profile and see personalized visa recommendations on the map.
         </p>
       </div>
     </div>

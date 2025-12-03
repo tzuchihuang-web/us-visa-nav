@@ -47,6 +47,8 @@ import { getVisaRecommendations, getVisasByStatus } from '@/lib/visa-matching-en
 interface VisaMapRedesignedProps {
   /** User profile from matching engine */
   userProfile: UserProfile;
+  /** Optional pre-computed visa matches (if provided, skips internal computation) */
+  matches?: ReturnType<typeof getVisasByStatus>;
   /** Currently selected visa on map */
   selectedVisa?: string | null;
   /** Callback when user clicks a visa node */

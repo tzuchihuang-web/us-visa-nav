@@ -28,6 +28,7 @@ export interface UseProfileResult {
   profile: UserProfile | null;
   loading: boolean;
   error: string | null;
+  isSaving: boolean;
   updateProfile: (updates: Partial<UserProfile>) => Promise<boolean>;
   saveProfile: () => Promise<boolean>;
 }
@@ -56,6 +57,7 @@ export function useVisaNavigatorProfile(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingChanges, setPendingChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // ========================================================================
   // LOAD PROFILE FROM SUPABASE ON MOUNT
@@ -140,12 +142,14 @@ export function useVisaNavigatorProfile(
       return true;
     }
 
+    setIsSaving(true);
     try {
       console.info('[Profile Hook] Saving profile to Supabase...');
       const success = await saveUserProfileToSupabase(userId, profile);
 
       if (success) {
         setPendingChanges(false);
+        setError(null);
         console.info('[Profile Hook] Profile saved successfully');
         return true;
       } else {
@@ -158,6 +162,8 @@ export function useVisaNavigatorProfile(
       console.error('[Profile Hook] Error saving profile:', message);
       setError(message);
       return false;
+    } finally {
+      setIsSaving(false);
     }
   }, [profile, userId, pendingChanges]);
 
@@ -165,6 +171,7 @@ export function useVisaNavigatorProfile(
     profile,
     loading,
     error,
+    isSaving,
     updateProfile,
     saveProfile,
   };
