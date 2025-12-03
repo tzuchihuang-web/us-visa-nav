@@ -43,7 +43,7 @@ export default function Home() {
   } = useVisaNavigatorProfile(user?.id);
 
   // Log profile state changes for debugging
-  React.useEffect(() => {
+  useEffect(() => {
     if (visaProfile) {
       console.info('[Home] Profile loaded successfully:', {
         userId: visaProfile.id,
