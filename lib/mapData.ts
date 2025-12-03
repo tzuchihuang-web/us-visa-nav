@@ -202,10 +202,69 @@ const PROFILES = {
 };
 
 // ============================================================================
+// CONVERT SKILL-BASED PROFILE TO NEW USERPROFILE FORMAT
+// ============================================================================
+// Helper function to map skill levels to new UserProfile fields
+// This enables backward compatibility with the matching engine
+
+function convertSkillsToUserProfile(skillBasedProfile: (typeof PROFILES.F1_STUDENT)) {
+  const convertEducationLevel = (level: number): "highSchool" | "bachelor" | "master" | "phd" => {
+    if (level >= 5) return "phd";
+    if (level >= 3) return "master";
+    if (level >= 2) return "bachelor";
+    return "highSchool";
+  };
+
+  const convertEnglishLevel = (level: number): "basic" | "intermediate" | "advanced" | "fluent" => {
+    if (level >= 5) return "fluent";
+    if (level >= 4) return "advanced";
+    if (level >= 2) return "intermediate";
+    return "basic";
+  };
+
+  const convertExperienceYears = (level: number): number => {
+    // Map skill level 0-5 to years: 1, 2, 3, 5, 7, 10
+    const mapping = [0, 1, 2, 3, 5, 7, 10];
+    return mapping[level] || 0;
+  };
+
+  const convertInvestmentAmount = (level: number): number => {
+    // Map skill level 0-5 to USD amounts
+    const mapping = [0, 25000, 50000, 100000, 250000, 500000, 1000000];
+    return mapping[level] || 0;
+  };
+
+  return {
+    id: "profile-001",
+    email: `${skillBasedProfile.name.toLowerCase().replace(" ", ".")}@visa-nav.app`,
+    currentStatus: skillBasedProfile.currentStatus,
+    visaInterests: [],
+    currentVisa: skillBasedProfile.currentVisa,
+    educationLevel: convertEducationLevel(
+      skillBasedProfile.skills.education?.level || 0
+    ),
+    workExperienceYears: convertExperienceYears(
+      skillBasedProfile.skills.workExperience?.level || 0
+    ),
+    fieldOfWork: "Technology", // Default field - can be enhanced later
+    countryOfCitizenship: "India", // Default - can be enhanced later
+    englishLevel: convertEnglishLevel(
+      skillBasedProfile.skills.language?.level || 0
+    ),
+    investmentAmountUSD: convertInvestmentAmount(
+      skillBasedProfile.skills.investment?.level || 0
+    ),
+  };
+}
+
+// ============================================================================
 // ACTIVE USER PROFILE (Change this to test different scenarios)
 // ============================================================================
 // Options: PROFILES.FRESH_START, PROFILES.F1_STUDENT, PROFILES.H1B_PROFESSIONAL, PROFILES.ADVANCED_SEEKER
-export const userProfile = PROFILES.F1_STUDENT;
+export const userProfile = convertSkillsToUserProfile(PROFILES.F1_STUDENT) as any;
+
+// Keep the original skill-based profile for backward compatibility with getVisaState()
+export const userProfileWithSkills = PROFILES.F1_STUDENT;
 
 // ============================================================================
 // VISA PATHS DATA - HIERARCHICAL STRUCTURE

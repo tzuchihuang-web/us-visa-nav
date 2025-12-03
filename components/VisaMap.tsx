@@ -1,27 +1,31 @@
 /**
- * VISA MAP COMPONENT - JOURNEY-BASED LAYOUT
+ * VISA MAP COMPONENT - JOURNEY-BASED LAYOUT WITH MATCHING
  * 
  * Displays visa paths as a journey starting from user's current visa
- * or a "Start" node if no visa.
+ * with real-time matching engine scoring.
  * 
  * Data Sources:
  * - Visa nodes: Dynamically loaded from visaKnowledgeBase (src/data/visaKnowledgeBase.ts)
  * - Visa edges: Generated from each visa's commonNextSteps field
+ * - Match scores: Computed by matchUserToVisas (src/logic/matchingEngine.ts)
  * - User starting point: Either current visa or "START" node
  * 
  * Layout:
  * - Left to right flow (time progression)
  * - Hierarchical levels by category/difficulty
  * - Lines connecting related visa paths via commonNextSteps
- * - Interactive hover cards
+ * - Interactive hover cards with match scores and reasons
  */
 
 "use client";
 
 import { useState, useMemo } from "react";
 import { visaKnowledgeBase, Visa } from "@/src/data/visaKnowledgeBase";
+import { matchUserToVisas } from "@/src/logic/matchingEngine";
+import { VisaMatchResult } from "@/lib/types";
 import {
   userProfile,
+  userProfileWithSkills,
   getStartingVisa,
   calculateTreePositions,
   getVisaState,
@@ -39,6 +43,7 @@ interface VisaNodeUI {
   nextSteps: string[];
   color: string;
   badge: string;
+  match?: VisaMatchResult;  // Matching result for this visa
 }
 
 interface Position {
@@ -353,6 +358,39 @@ function VisaNodeElement({
             <p className="text-xs text-gray-500 mb-3 italic">{visa.notes}</p>
           )}
 
+          {/* MATCH SCORE AND REASONS */}
+          {visa.match && (
+            <div className="mb-4 pb-4 border-t border-gray-200">
+              {/* Match Score */}
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-gray-700 mb-1">
+                  Profile Match: <span className="text-blue-600">{visa.match.score}%</span>
+                </p>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all"
+                    style={{ width: `${visa.match.score}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Reasons */}
+              {visa.match.reasons.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Why this match:</p>
+                  <ul className="text-xs text-gray-600 space-y-1">
+                    {visa.match.reasons.slice(0, 3).map((reason, idx) => (
+                      <li key={idx} className="flex gap-2">
+                        <span className="text-blue-500 flex-shrink-0">•</span>
+                        <span>{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Status indicator */}
           <div className="mb-4 pb-4 border-t border-gray-200">
             <p className="text-xs font-semibold text-gray-700">
@@ -513,6 +551,25 @@ export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[]
     [visasToShow]
   );
 
+  // COMPUTE MATCHING SCORES
+  // Use the matching engine to score each visa based on user profile
+  // Returns visas sorted by score (highest first)
+  const matchResults = useMemo(() => {
+    // Convert VisaNodeUI back to Visa for matching engine
+    const visasForMatching = filteredVisaKB;
+    return matchUserToVisas(userProfile as any, visasForMatching);
+  }, [userProfile, filteredVisaKB]);
+
+  // ADD MATCH RESULTS TO VISIBLE VISA NODES
+  // Map match results back to visa nodes for display
+  const visasToShowWithMatches = useMemo(() => {
+    const matchMap = new Map(matchResults.map((m) => [m.visaId, m]));
+    return visasToShow.map((visa) => ({
+      ...visa,
+      match: matchMap.get(visa.id),
+    }));
+  }, [visasToShow, matchResults]);
+
   return (
     <div className="flex-1 relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Background grid and decorations */}
@@ -524,18 +581,18 @@ export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[]
         positions={positions}
         hoveredNodeId={hoveredNodeId}
         edges={edges.filter((e) => {
-          const fromExists = visasToShow.find((v) => v.id === e.from);
-          const toExists = visasToShow.find((v) => v.id === e.to);
+          const fromExists = visasToShowWithMatches.find((v) => v.id === e.from);
+          const toExists = visasToShowWithMatches.find((v) => v.id === e.to);
           return fromExists && toExists;
         })}
       />
 
       {/* Visa nodes */}
       <div className="relative w-full h-full">
-        {visasToShow.map((visa: VisaNodeUI) => {
+        {visasToShowWithMatches.map((visa: VisaNodeUI) => {
           const baseState = getVisaState(
             visa as any,
-            userProfile.skills
+            userProfileWithSkills.skills
           );
           // Override state to "recommended" if this visa is in recommendedVisas
           const state = recommendedVisas.includes(visa.id) ? "recommended" : baseState;
