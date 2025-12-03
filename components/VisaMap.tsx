@@ -20,7 +20,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { visaKnowledgeBase, Visa } from "@/src/data/visaKnowledgeBase";
+import { VISA_KNOWLEDGE_BASE, VisaDefinition } from "@/lib/visa-knowledge-base";
 import { UserProfile } from "@/lib/types";
 import { matchUserToVisas } from "@/src/logic/matchingEngine";
 import { VisaMatchResult } from "@/lib/types";
@@ -447,13 +447,9 @@ export function VisaMap({
   const effectiveUserProfile = propsUserProfile || (userProfile as any);
 
   // LOAD VISA KNOWLEDGE BASE DATA
-  // Filter out visas with category "other" - only show relevant visa categories
+  // Get all visas from knowledge base
   const filteredVisaKB = useMemo(
-    () =>
-      visaKnowledgeBase.filter(
-        (visa) =>
-          visa.category !== "other" && visa.category !== "exchange"
-      ),
+    () => Object.values(VISA_KNOWLEDGE_BASE),
     []
   );
 
@@ -489,15 +485,22 @@ export function VisaMap({
         categoryColors[visa.category] ||
         categoryColors.work;
 
+      // Convert numeric difficulty to string format
+      const difficultyMap: Record<number, "low" | "medium" | "high"> = {
+        1: "low",
+        2: "medium",
+        3: "high",
+      };
+
       return {
         id: visa.id,
         name: visa.name,
         category: visa.category,
         description: visa.officialDescription,
-        difficulty: visa.difficulty,
+        difficulty: difficultyMap[visa.difficulty] || "medium",
         timeHorizon: visa.timeHorizon,
         notes: visa.notes,
-        nextSteps: visa.commonNextSteps || [],
+        nextSteps: visa.commonNextSteps?.map(step => step.visaId) || [],
         color: colors.color,
         badge: colors.badge,
       };
@@ -567,7 +570,7 @@ export function VisaMap({
   const matchResults = useMemo(() => {
     // Convert VisaNodeUI back to Visa for matching engine
     const visasForMatching = filteredVisaKB;
-    return matchUserToVisas(effectiveUserProfile as any, visasForMatching);
+    return matchUserToVisas(effectiveUserProfile as any, visasForMatching as any);
   }, [effectiveUserProfile, filteredVisaKB]);
 
   // ADD MATCH RESULTS TO VISIBLE VISA NODES
