@@ -6,34 +6,40 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useUserProfile } from '@/lib/hooks/useUserProfile';
 import { hasCompletedOnboarding } from '@/lib/supabase/client';
 import { Header } from '@/components/Header';
-import { SkillTree } from "@/components/SkillTree";
-import { VisaMap } from "@/components/VisaMap";
+import { SkillTreeEditable, type SkillLevels } from "@/components/SkillTreeEditable";
+import VisaMapRedesigned from "@/components/VisaMapRedesigned";
+import { VisaDetailPanel } from "@/components/VisaDetailPanel";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { visaPaths } from '@/lib/mapData';
 
 /**
- * Home Page / Visa Map
+ * Home Page / Visa Map - PHASE 4 REDESIGN
  * 
- * PHASE 3 UPDATE:
- * - Loads user's onboarding data
- * - Passes skill levels to SkillTree
- * - Highlights recommended visas on map
- * - Shows personalized profile card
+ * PHASE 4 UPDATE:
+ * - Editable skill tree (left sidebar) - all 6 skills
+ * - Hierarchical visa map (redesigned) - 4-level layout
+ * - Fixed detail panel (right side) - click to view visa info
+ * - Real-time updates - skill changes recalculate visa availability
+ * 
+ * STATE MANAGEMENT:
+ * - Loads user's onboarding data on first render
+ * - Skills state separate from onboarding (allows editing)
+ * - Real-time updates between skill tree and visa map
  * 
  * FIRST-TIME USER CHECK (Line 28-42):
  * - After login, checks if user has completed onboarding via Supabase
  * - If onboarding not found → redirect to /onboarding
  * - If onboarding exists → show the visa map and skill tree
  * - Returns user directly on subsequent logins
- * 
- * CUSTOMIZATION:
- * - Uses hasCompletedOnboarding() from Supabase service
- * - Checks onboarding_data field in user_profiles table
  */
 
 export default function Home() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [skills, setSkills] = useState<SkillLevels | null>(null);
+  const [selectedVisa, setSelectedVisa] = useState<string | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   
   // Load user profile with onboarding data
   const userProfile = useUserProfile(user?.id);
@@ -57,7 +63,31 @@ export default function Home() {
     }
   }, [user, authLoading, onboardingChecked, router]);
 
-  if (authLoading || !onboardingChecked || userProfile.loading) {
+  // Initialize skills from onboarding data on load
+  useEffect(() => {
+    if (userProfile.onboardingData && !skills) {
+      setSkills({
+        education: userProfile.onboardingData.educationLevel,
+        workExperience: userProfile.onboardingData.yearsOfExperience || 0,
+        fieldOfWork: 'tech', // TODO: Add to onboarding if needed
+        citizenship: 'unrestricted', // TODO: Add to onboarding if needed
+        englishProficiency: 3, // TODO: Add to onboarding if needed
+        investmentAmount: 0, // TODO: Add to onboarding if needed
+      });
+    }
+  }, [userProfile.onboardingData, skills]);
+
+  const handleSkillsChange = (newSkills: SkillLevels) => {
+    setSkills(newSkills);
+    // TODO: Persist to Supabase if needed
+  };
+
+  const handleVisaSelect = (visaCode: string) => {
+    setSelectedVisa(visaCode);
+    setIsPanelOpen(true);
+  };
+
+  if (authLoading || !onboardingChecked || userProfile.loading || !skills) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -72,19 +102,52 @@ export default function Home() {
     <ProtectedRoute>
       <>
         <Header />
-        <main className="flex h-screen bg-white overflow-hidden">
-          {/* Left Sidebar: Skill Tree */}
-          <SkillTree 
-            skillLevels={userProfile.skillLevels}
-            onboardingData={userProfile.onboardingData}
-            recommendedVisas={userProfile.recommendedVisas}
-            userName={userProfile.name}
-          />
+        <main className="flex h-screen bg-white overflow-hidden relative">
+          {/* Left Sidebar: Editable Skill Tree */}
+          <div className="w-80 border-r border-gray-200 overflow-y-auto">
+            <SkillTreeEditable 
+              onboardingData={userProfile.onboardingData}
+              initialSkills={skills}
+              onSkillsChange={handleSkillsChange}
+            />
+          </div>
 
-          {/* Right Main Area: Abstract Visa Map */}
-          <VisaMap 
-            recommendedVisas={userProfile.recommendedVisas}
-          />
+          {/* Right Main Area: Hierarchical Visa Map */}
+          <div className="flex-1 relative">
+            <VisaMapRedesigned 
+              skills={skills}
+              selectedVisa={selectedVisa}
+              onVisaSelect={handleVisaSelect}
+            />
+          </div>
+
+          {/* Fixed Right Side: Visa Detail Panel */}
+          {isPanelOpen && selectedVisa && (() => {
+            const visaData = visaPaths.find(v => v.id === selectedVisa);
+            const educationLevel = typeof skills.education === 'string' 
+              ? (skills.education === 'high_school' ? 1 : skills.education === 'bachelors' ? 2 : 3)
+              : skills.education;
+
+            return visaData ? (
+              <VisaDetailPanel
+                isOpen={isPanelOpen}
+                visa={{
+                  id: visaData.id,
+                  name: visaData.name,
+                  emoji: visaData.emoji,
+                  description: visaData.description,
+                  fullDescription: visaData.fullDescription,
+                  category: visaData.category,
+                  status: 'recommended', // TODO: Calculate from skills
+                }}
+                userMeets={{
+                  education: (visaData.requirements.education?.min || 0) <= educationLevel,
+                  experience: (visaData.requirements.workExperience?.min || 0) <= skills.workExperience,
+                }}
+                onClose={() => setIsPanelOpen(false)}
+              />
+            ) : null;
+          })()}
         </main>
       </>
     </ProtectedRoute>
