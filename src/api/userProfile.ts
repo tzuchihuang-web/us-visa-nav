@@ -35,7 +35,7 @@ interface SupabaseUserProfile {
   field_of_work?: string | null;
   country_of_citizenship?: string | null;
   english_level?: string | null;           // NOT english_proficiency
-  investment_amount?: number | null;
+  investment_amount_usd?: number | null;    // Database column is investment_amount_usd
   created_at?: string;
   updated_at?: string;
 }
@@ -66,7 +66,7 @@ function fromSupabaseProfile(dbRecord: SupabaseUserProfile): UserProfile {
     fieldOfWork: dbRecord.field_of_work || '',
     countryOfCitizenship: dbRecord.country_of_citizenship || 'US',
     englishProficiency: englishProficiency,
-    investmentAmount: dbRecord.investment_amount || 0,
+    investmentAmount: dbRecord.investment_amount_usd || 0,
   };
 }
 
@@ -94,7 +94,7 @@ function toSupabaseProfile(profile: UserProfile): Partial<SupabaseUserProfile> {
     field_of_work: profile.fieldOfWork || null,
     country_of_citizenship: profile.countryOfCitizenship || null,
     english_level: englishLevel, // Map to english_level, NOT english_proficiency
-    investment_amount: profile.investmentAmount || null,
+    investment_amount_usd: profile.investmentAmount || null, // Database column is investment_amount_usd
   };
 }
 
@@ -233,7 +233,7 @@ export async function initializeUserProfileInSupabase(
       field_of_work: null,
       country_of_citizenship: null,
       english_level: null,
-      investment_amount: null,
+      investment_amount_usd: null,
     };
 
     const result = await updateProfileInSupabase(

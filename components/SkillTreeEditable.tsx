@@ -94,7 +94,7 @@ export function SkillTreeEditable({
         field_of_work: skills.fieldOfWork,
         country_of_citizenship: skills.citizenship,
         english_level: skills.englishProficiency,
-        investment_amount: skills.investmentAmount,
+        investment_amount_usd: skills.investmentAmount,
       }).catch(err => {
         console.error('[SkillTree] Failed to persist profile:', err);
       });

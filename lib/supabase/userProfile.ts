@@ -48,7 +48,7 @@ export interface UserProfileData {
   field_of_work: string; // e.g., "tech", "engineering"
   country_of_citizenship: string; // ISO country code, e.g., "IN", "BR"
   english_level: number; // 0-5 scale
-  investment_amount: number; // USD
+  investment_amount_usd: number; // USD - Database column name
   updated_at: string; // ISO timestamp
 }
 
