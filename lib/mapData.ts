@@ -465,15 +465,25 @@ export const mapConfig = {
 // based on the user's skill tree
 
 export function getVisaState(
-  visa: (typeof visaPaths)[0],
+  visa: any,
   userSkills: typeof userProfile.skills
 ): "locked" | "available" | "recommended" {
   /**
    * Returns: "locked", "available", "recommended"
    * 
+   * Works with both old visaPaths format and new VisaNodeUI format
+   * For new format, all visas are available unless requirements field exists
+   * 
    * CUSTOMIZE: Adjust the logic here to match your visa eligibility rules
    */
   
+  // NEW FORMAT: VisaNodeUI doesn't have requirements field
+  // Default to "available" for new format visas
+  if (!visa.requirements) {
+    return "available";
+  }
+  
+  // OLD FORMAT: visaPaths with explicit requirements field
   for (const [skillKey, requirement] of Object.entries(visa.requirements)) {
     const userSkill = userSkills[skillKey as keyof typeof userSkills];
     
@@ -571,44 +581,64 @@ export function getEligiblePaths(
 /**
  * Calculates tree layout positions for nodes
  * Arranges nodes hierarchically:
- * - Left to right flow (x-axis)
- * - Grouped by tier (entry, intermediate, advanced)
+ * - Left to right flow (x-axis) based on difficulty/maturity
+ * - Grouped by category
  * 
  * Returns object with visa id -> position mapping
+ * Works with both old visaPaths and new VisaNodeUI types
  */
 export function calculateTreePositions(
-  visasToShow: (typeof visaPaths)[0][]
+  visasToShow: any[]
 ): Record<string, { x: number; y: number }> {
   /**
    * Layout strategy:
-   * - Group visas by tier
-   * - Position x based on tier: start=0, entry=20%, intermediate=50%, advanced=80%
+   * - Group visas by "tier" (if it exists) OR by category maturity
+   * - Position x based on difficulty/progression
    * - Position y based on count within tier (distribute vertically)
    */
 
   const positions: Record<string, { x: number; y: number }> = {};
 
-  // Group by tier
-  const byTier = {
-    start: visasToShow.filter((v) => v.tier === "start"),
-    entry: visasToShow.filter((v) => v.tier === "entry"),
-    intermediate: visasToShow.filter((v) => v.tier === "intermediate"),
-    advanced: visasToShow.filter((v) => v.tier === "advanced"),
-  };
+  // Determine tier grouping - support both old and new data formats
+  const hasTierField = visasToShow.some((v) => v.tier);
+  
+  let byTier: Record<string, any[]>;
+  let tierXPositions: Record<string, number>;
 
-  // X positions for each tier (percentage)
-  const tierXPositions = {
-    start: 10,
-    entry: 25,
-    intermediate: 50,
-    advanced: 75,
-  };
+  if (hasTierField) {
+    // OLD FORMAT: visaPaths with explicit tier field
+    byTier = {
+      start: visasToShow.filter((v) => v.tier === "start"),
+      entry: visasToShow.filter((v) => v.tier === "entry"),
+      intermediate: visasToShow.filter((v) => v.tier === "intermediate"),
+      advanced: visasToShow.filter((v) => v.tier === "advanced"),
+    };
+    tierXPositions = {
+      start: 10,
+      entry: 25,
+      intermediate: 50,
+      advanced: 75,
+    };
+  } else {
+    // NEW FORMAT: VisaNodeUI with category and difficulty
+    // Group by category maturity (student -> work -> immigrant)
+    byTier = {
+      entry: visasToShow.filter((v) => v.category === "student"),
+      intermediate: visasToShow.filter((v) => v.category === "work"),
+      advanced: visasToShow.filter((v) => v.category === "immigrant"),
+      investment: visasToShow.filter((v) => v.category === "investment"),
+    };
+    tierXPositions = {
+      entry: 20,
+      intermediate: 50,
+      advanced: 75,
+      investment: 65,
+    };
+  }
 
   // Assign positions with vertical distribution
-  let totalNodes = visasToShow.length;
-
   Object.entries(byTier).forEach(([tier, visas]) => {
-    const x = tierXPositions[tier as keyof typeof tierXPositions];
+    const x = tierXPositions[tier] || 50;
 
     // Distribute y positions evenly across the canvas height
     visas.forEach((visa, index) => {

@@ -4,36 +4,39 @@
  * Displays visa paths as a journey starting from user's current visa
  * or a "Start" node if no visa.
  * 
+ * Data Sources:
+ * - Visa nodes: Dynamically loaded from visaKnowledgeBase (src/data/visaKnowledgeBase.ts)
+ * - Visa edges: Generated from each visa's commonNextSteps field
+ * - User starting point: Either current visa or "START" node
+ * 
  * Layout:
  * - Left to right flow (time progression)
- * - Hierarchical levels: Start -> Entry -> Intermediate -> Advanced
- * - Lines connecting related visa paths
+ * - Hierarchical levels by category/difficulty
+ * - Lines connecting related visa paths via commonNextSteps
  * - Interactive hover cards
  */
 
 "use client";
 
 import { useState, useMemo } from "react";
+import { visaKnowledgeBase, Visa } from "@/src/data/visaKnowledgeBase";
 import {
-  visaPaths,
   userProfile,
   getStartingVisa,
-  getEligiblePaths,
   calculateTreePositions,
   getVisaState,
   mapConfig,
 } from "@/lib/mapData";
 
-interface VisaNode {
+interface VisaNodeUI {
   id: string;
   name: string;
-  emoji: string;
-  description: string;
-  fullDescription: string;
   category: string;
-  tier: string;
-  requirements: Record<string, any>;
-  previousVisas: string[];
+  description: string;
+  difficulty?: "low" | "medium" | "high";
+  timeHorizon?: "short" | "medium" | "long";
+  notes?: string;
+  nextSteps: string[];
   color: string;
   badge: string;
 }
@@ -112,14 +115,17 @@ function PathLines({
   visasToShow,
   positions,
   hoveredNodeId,
+  edges,
 }: {
-  visasToShow: VisaNode[];
+  visasToShow: VisaNodeUI[];
   positions: Record<string, Position>;
   hoveredNodeId: string | null;
+  edges: Array<{ from: string; to: string }>;
 }) {
   /**
    * Draws lines connecting visa paths
-   * Lines show the journey flow from previous visas to next visas
+   * Lines generated from each visa's commonNextSteps field
+   * These edges represent the flow from one visa to the next
    */
 
   const viewBoxWidth = 1400;
@@ -151,38 +157,32 @@ function PathLines({
         `}</style>
       </defs>
 
-      {/* Draw connection lines */}
-      {visasToShow.map((visa) => {
-        if (!visa.previousVisas.length) return null;
+      {/* Draw connection lines from edges */}
+      {edges.map(({ from, to }) => {
+        const fromPos = positions[from];
+        const toPos = positions[to];
 
-        return visa.previousVisas.map((prevVisaId) => {
-          const prevVisa = visasToShow.find((v) => v.id === prevVisaId);
-          if (!prevVisa || !positions[prevVisaId] || !positions[visa.id]) return null;
+        if (!fromPos || !toPos) return null;
 
-          const fromPos = positions[prevVisaId];
-          const toPos = positions[visa.id];
+        const x1 = (fromPos.x / 100) * viewBoxWidth;
+        const y1 = (fromPos.y / 100) * viewBoxHeight;
+        const x2 = (toPos.x / 100) * viewBoxWidth;
+        const y2 = (toPos.y / 100) * viewBoxHeight;
 
-          const x1 = (fromPos.x / 100) * viewBoxWidth;
-          const y1 = (fromPos.y / 100) * viewBoxHeight;
-          const x2 = (toPos.x / 100) * viewBoxWidth;
-          const y2 = (toPos.y / 100) * viewBoxHeight;
+        const isHighlighted = hoveredNodeId === to || hoveredNodeId === from;
 
-          const isHighlighted =
-            hoveredNodeId === visa.id || hoveredNodeId === prevVisaId;
+        // Create curved path (quadratic Bezier)
+        const midX = (x1 + x2) / 2;
+        const controlX = midX + (x2 - x1) * 0.3;
+        const pathData = `M ${x1} ${y1} Q ${controlX} ${(y1 + y2) / 2} ${x2} ${y2}`;
 
-          // Create curved path (quadratic Bezier)
-          const midX = (x1 + x2) / 2;
-          const controlX = midX + (x2 - x1) * 0.3;
-          const pathData = `M ${x1} ${y1} Q ${controlX} ${(y1 + y2) / 2} ${x2} ${y2}`;
-
-          return (
-            <path
-              key={`path-${prevVisaId}-${visa.id}`}
-              d={pathData}
-              className={`visa-path-line ${isHighlighted ? "highlighted" : ""}`}
-            />
-          );
-        });
+        return (
+          <path
+            key={`path-${from}-${to}`}
+            d={pathData}
+            className={`visa-path-line ${isHighlighted ? "highlighted" : ""}`}
+          />
+        );
       })}
     </svg>
   );
@@ -193,31 +193,42 @@ function VisaNodeElement({
   state,
   position,
   isHovered,
-  isStarting,
+  isCurrentVisa,
   onHover,
   onHoverEnd,
   onClick,
 }: {
-  visa: VisaNode;
+  visa: VisaNodeUI;
   state: string;
   position: Position;
   isHovered: boolean;
-  isStarting: boolean;
+  isCurrentVisa: boolean;
   onHover: () => void;
   onHoverEnd: () => void;
   onClick: () => void;
 }) {
   /**
    * Individual visa node on the journey map
-   * Starting node is highlighted with larger size and glow
+   * Current visa node is highlighted with larger size and glow
    */
 
   const isLocked = state === "locked";
   const statusColor =
     mapConfig.statusColors[state as keyof typeof mapConfig.statusColors];
 
-  // Calculate size based on whether it's the starting node
-  const nodeSize = isStarting ? 70 : mapConfig.nodeRadius;
+  // Calculate size based on whether it's the current visa
+  const nodeSize = isCurrentVisa ? 70 : mapConfig.nodeRadius;
+  
+  // Emoji based on category
+  const categoryEmoji: Record<string, string> = {
+    student: "🎓",
+    work: "💼",
+    immigrant: "🏆",
+    investment: "💎",
+    exchange: "🌍",
+    other: "📋",
+  };
+  const emoji = categoryEmoji[visa.category] || "📋";
 
   return (
     <div
@@ -233,8 +244,8 @@ function VisaNodeElement({
       onMouseLeave={onHoverEnd}
       onClick={onClick}
     >
-      {/* Glow effect for starting node */}
-      {isStarting && (
+      {/* Glow effect for current visa node */}
+      {isCurrentVisa && (
         <div
           className="absolute inset-0 rounded-full animate-pulse"
           style={{
@@ -258,13 +269,13 @@ function VisaNodeElement({
           opacity: isLocked ? mapConfig.nodeLockedOpacity : mapConfig.nodeUnlockedOpacity,
           transform: isHovered ? `scale(${mapConfig.nodeHoverScale})` : "scale(1)",
           backgroundColor: isLocked ? "#f3f4f6" : "#ffffff",
-          border: isStarting
+          border: isCurrentVisa
             ? "3px solid #3b82f6"
             : isLocked
               ? "2px dashed #d1d5db"
               : "2px solid #e5e7eb",
           boxShadow:
-            isStarting && !isLocked
+            isCurrentVisa && !isLocked
               ? "0 0 20px rgba(59, 130, 246, 0.3)"
               : "none",
         }}
@@ -276,7 +287,7 @@ function VisaNodeElement({
             fontSize: `${nodeSize * 0.5}px`,
           }}
         >
-          {visa.emoji}
+          {emoji}
         </span>
       </div>
 
@@ -288,7 +299,7 @@ function VisaNodeElement({
           color: statusColor.text,
         }}
       >
-        {isLocked ? "🔒" : isStarting ? "🌟" : state === "recommended" ? "⭐" : "✓"}
+        {isLocked ? "🔒" : isCurrentVisa ? "🌟" : state === "recommended" ? "⭐" : "✓"}
       </div>
 
       {/* Lock overlay (if locked) */}
@@ -322,18 +333,25 @@ function VisaNodeElement({
           {/* Visa name */}
           <h3 className="font-bold text-lg text-gray-900 mb-1">{visa.name}</h3>
 
-          {/* Category and tier badges */}
+          {/* Category badges */}
           <div className="flex gap-2 mb-3">
             <span className={`text-xs font-semibold px-2 py-1 rounded-full ${visa.badge}`}>
               {visa.category}
             </span>
-            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-              {visa.tier}
-            </span>
+            {visa.difficulty && (
+              <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                {visa.difficulty}
+              </span>
+            )}
           </div>
 
           {/* Description */}
-          <p className="text-sm text-gray-600 mb-3">{visa.fullDescription}</p>
+          <p className="text-sm text-gray-600 mb-3">{visa.description}</p>
+
+          {/* Notes if available */}
+          {visa.notes && (
+            <p className="text-xs text-gray-500 mb-3 italic">{visa.notes}</p>
+          )}
 
           {/* Status indicator */}
           <div className="mb-4 pb-4 border-t border-gray-200">
@@ -380,35 +398,148 @@ function VisaNodeElement({
 export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[] }) {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
-  // CUSTOMIZE: Determine starting visa and eligible paths
-  const startingVisaId = useMemo(() => getStartingVisa(userProfile), []);
-  const visasToShow = useMemo(
-    () => getEligiblePaths(startingVisaId, userProfile),
-    [startingVisaId]
+  // LOAD VISA KNOWLEDGE BASE DATA
+  // Filter out visas with category "other" - only show relevant visa categories
+  const filteredVisaKB = useMemo(
+    () =>
+      visaKnowledgeBase.filter(
+        (visa) =>
+          visa.category !== "other" && visa.category !== "exchange"
+      ),
+    []
   );
 
+  // GENERATE NODES DYNAMICALLY FROM KNOWLEDGE BASE
+  // Transform visa knowledge base entries into UI nodes with proper styling
+  const visaNodes = useMemo((): VisaNodeUI[] => {
+    return filteredVisaKB.map((visa) => {
+      // Color mapping based on category
+      const categoryColors: Record<string, { color: string; badge: string }> = {
+        student: {
+          color: "from-blue-400 to-blue-600",
+          badge: "bg-blue-100 text-blue-700",
+        },
+        work: {
+          color: "from-purple-400 to-purple-600",
+          badge: "bg-purple-100 text-purple-700",
+        },
+        immigrant: {
+          color: "from-red-400 to-red-600",
+          badge: "bg-red-100 text-red-700",
+        },
+        investment: {
+          color: "from-pink-400 to-pink-600",
+          badge: "bg-pink-100 text-pink-700",
+        },
+        exchange: {
+          color: "from-green-400 to-green-600",
+          badge: "bg-green-100 text-green-700",
+        },
+      };
+
+      const colors =
+        categoryColors[visa.category] ||
+        categoryColors.work;
+
+      return {
+        id: visa.id,
+        name: visa.name,
+        category: visa.category,
+        description: visa.officialDescription,
+        difficulty: visa.difficulty,
+        timeHorizon: visa.timeHorizon,
+        notes: visa.notes,
+        nextSteps: visa.commonNextSteps || [],
+        color: colors.color,
+        badge: colors.badge,
+      };
+    });
+  }, [filteredVisaKB]);
+
+  // GENERATE EDGES DYNAMICALLY FROM commonNextSteps
+  // Build edge list where each visa's commonNextSteps creates connections
+  const edges = useMemo(() => {
+    const edgeList: Array<{ from: string; to: string }> = [];
+
+    visaNodes.forEach((visa) => {
+      visa.nextSteps.forEach((nextVisaId) => {
+        // Only add edge if both visas exist in our filtered list
+        if (visaNodes.find((v) => v.id === nextVisaId)) {
+          edgeList.push({ from: visa.id, to: nextVisaId });
+        }
+      });
+    });
+
+    return edgeList;
+  }, [visaNodes]);
+
+  // DETERMINE STARTING POINT: User's current visa or "START" node
+  const currentVisa = userProfile.currentVisa;
+  
+  // Build list of visas to show:
+  // - If user has current visa: show that + all reachable visas
+  // - If user has no visa: show all entry-level visas (student, work)
+  const visasToShow = useMemo(() => {
+    if (currentVisa) {
+      // User has a current visa - show it and all reachable visas
+      const visited = new Set<string>();
+      const toVisit = [currentVisa];
+
+      while (toVisit.length > 0) {
+        const visaId = toVisit.pop();
+        if (!visaId || visited.has(visaId)) continue;
+        visited.add(visaId);
+
+        // Find all visas reachable from this one (via commonNextSteps)
+        const nextVisas = edges
+          .filter((e) => e.from === visaId)
+          .map((e) => e.to);
+
+        toVisit.push(...nextVisas);
+      }
+
+      return visaNodes.filter((v) => visited.has(v.id));
+    } else {
+      // User has no visa - show entry-level visas only
+      return visaNodes.filter(
+        (v) => v.category === "student" || v.category === "work"
+      );
+    }
+  }, [currentVisa, visaNodes, edges]);
+
   // Calculate tree positions for all visible visas
-  const positions = useMemo(() => calculateTreePositions(visasToShow), [visasToShow]);
+  const positions = useMemo(
+    () => calculateTreePositions(visasToShow),
+    [visasToShow]
+  );
 
   return (
     <div className="flex-1 relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Background grid and decorations */}
       <AbstractMapBackground />
 
-      {/* Path lines connecting visa nodes */}
+      {/* Path lines connecting visa nodes via commonNextSteps */}
       <PathLines
         visasToShow={visasToShow}
         positions={positions}
         hoveredNodeId={hoveredNodeId}
+        edges={edges.filter((e) => {
+          const fromExists = visasToShow.find((v) => v.id === e.from);
+          const toExists = visasToShow.find((v) => v.id === e.to);
+          return fromExists && toExists;
+        })}
       />
 
       {/* Visa nodes */}
       <div className="relative w-full h-full">
-        {visasToShow.map((visa) => {
-          const baseState = getVisaState(visa, userProfile.skills);
+        {visasToShow.map((visa: VisaNodeUI) => {
+          const baseState = getVisaState(
+            visa as any,
+            userProfile.skills
+          );
           // Override state to "recommended" if this visa is in recommendedVisas
           const state = recommendedVisas.includes(visa.id) ? "recommended" : baseState;
-          const isStarting = visa.id === startingVisaId;
+          const isCurrentVisa = visa.id === currentVisa;
           const pos = positions[visa.id];
 
           if (!pos) return null;
@@ -420,7 +551,7 @@ export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[]
               state={state}
               position={pos}
               isHovered={hoveredNodeId === visa.id}
-              isStarting={isStarting}
+              isCurrentVisa={isCurrentVisa}
               onHover={() => setHoveredNodeId(visa.id)}
               onHoverEnd={() => setHoveredNodeId(null)}
               onClick={() => {
@@ -438,14 +569,14 @@ export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[]
       <div className="absolute bottom-8 right-8 max-w-sm bg-white rounded-xl shadow-lg p-6 border border-gray-200">
         <h2 className="font-bold text-lg text-gray-900 mb-2">Your Visa Journey</h2>
         <p className="text-sm text-gray-600 mb-4">
-          {startingVisaId === "start"
+          {!currentVisa
             ? "You're starting fresh! Explore various visa options to begin your U.S. journey."
-            : `You're currently on the ${visaPaths.find((v) => v.id === startingVisaId)?.name} path. Explore next steps in your journey.`}
+            : `You're currently on the ${visaNodes.find((v) => v.id === currentVisa)?.name} path. Explore next steps in your journey.`}
         </p>
         <div className="space-y-2 text-xs text-gray-600">
           <div className="flex items-center gap-2">
             <span className="text-lg">🌟</span>
-            <span>Starting point - Your current visa</span>
+            <span>Current visa - Your starting point</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-lg">⭐</span>
@@ -466,25 +597,29 @@ export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[]
       {/* 
         To customize the journey map:
         
-        1. CHANGE STARTING VISA:
+        1. VISA DATA FLOW:
+           - Visa definitions come from: src/data/visaKnowledgeBase.ts
+           - Edges are generated from: visa.commonNextSteps field
+           - Filtered categories: student, work, immigrant, investment
+        
+        2. CURRENT VISA HIGHLIGHT:
+           - If user has currentVisa: shown with blue glow and 🌟 badge
+           - If no currentVisa: shows entry-level student/work visas
+        
+        3. CHANGE STARTING VISA:
            - Edit userProfile.currentVisa in lib/mapData.ts
-           - Set to null for "Start" node, or visa ID like "f1"
+           - Set to null for "no visa" mode, or visa ID like "f1"
         
-        2. ADD NEW VISA PATH:
-           - Add to visaPaths array in lib/mapData.ts
-           - Set tier, requirements, and previousVisas
+        4. MODIFY CATEGORY COLORS:
+           - Update categoryColors map in this component
+           - Colors applied based on visa.category
         
-        3. CHANGE TREE LAYOUT:
+        5. CHANGE TREE LAYOUT:
            - Edit calculateTreePositions() in lib/mapData.ts
            - Adjust x positions for tiers and y distribution
         
-        4. MODIFY ELIGIBLE PATHS:
-           - Edit getEligiblePaths() logic in lib/mapData.ts
-           - Add filters for skill requirements
-        
-        5. CHANGE VISUAL STYLE:
+        6. MODIFY VISUAL STYLE:
            - mapConfig in lib/mapData.ts (colors, opacity, sizes)
-           - Tier colors: modify visa.color and visa.badge
       */}
     </div>
   );
