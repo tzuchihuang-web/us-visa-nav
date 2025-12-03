@@ -6,58 +6,206 @@
  * - Add/remove skill nodes
  * - Adjust visa requirements
  * - Customize visa descriptions and metadata
+ * 
+ * USER PROFILES:
+ * To test different scenarios, uncomment a different profile below:
+ * 1. FRESH_START - No visa, beginner skills
+ * 2. F1_STUDENT - Current F-1, ready for work visa
+ * 3. H1B_PROFESSIONAL - Experienced H-1B worker
+ * 4. ADVANCED_SEEKER - EB-2 green card path
  */
 
 // ============================================================================
-// USER PROFILE & SKILL TREE DATA
+// PREDEFINED USER PROFILES FOR TESTING
 // ============================================================================
-// Customize the user's skills, education level, work experience, etc.
-// Locked nodes will restrict visa availability
-// IMPORTANT: Set currentVisa to determine the map's starting point
 
-export const userProfile = {
-  name: "Alex Johnson",
-  currentStatus: "international_student",
-  currentVisa: "f1", // null = no visa (show "Start" node), "f1" = starting from F-1, etc.
-  skills: {
-    education: {
-      name: "Education Level",
-      level: 3, // 0-5 scale: 0=locked, 1=HS, 2=Bachelor's, 3=Master's, 4=PhD, 5=Advanced
-      unlocked: true,
-      icon: "🎓",
+const PROFILES = {
+  // Scenario 1: Fresh start, exploring options
+  FRESH_START: {
+    name: "Jordan Smith",
+    currentStatus: "none",
+    currentVisa: null, // No visa - shows "Start" node
+    skills: {
+      education: {
+        name: "Education Level",
+        level: 2, // Bachelor's degree
+        unlocked: true,
+        icon: "🎓",
+      },
+      workExperience: {
+        name: "Work Experience",
+        level: 1, // 1-2 years
+        unlocked: true,
+        icon: "💼",
+      },
+      fieldOfWork: {
+        name: "Field of Work",
+        level: 1, // Common field
+        unlocked: true,
+        icon: "🔧",
+      },
+      citizenship: {
+        name: "Country of Citizenship",
+        level: 1, // Restricted countries
+        unlocked: true,
+        icon: "🌍",
+      },
+      investment: {
+        name: "Investment Amount",
+        level: 0, // Locked
+        unlocked: false,
+        icon: "💰",
+      },
+      language: {
+        name: "English Proficiency",
+        level: 3,
+        unlocked: true,
+        icon: "🗣️",
+      },
     },
-    workExperience: {
-      name: "Work Experience",
-      level: 2, // 0-5 scale: years of experience
-      unlocked: true,
-      icon: "💼",
+  },
+
+  // Scenario 2: F-1 student with good prospects for H-1B
+  F1_STUDENT: {
+    name: "Alex Johnson",
+    currentStatus: "international_student",
+    currentVisa: "f1", // Starting from F-1
+    skills: {
+      education: {
+        name: "Education Level",
+        level: 3, // Master's degree
+        unlocked: true,
+        icon: "🎓",
+      },
+      workExperience: {
+        name: "Work Experience",
+        level: 2, // 2-3 years internship + OPT
+        unlocked: true,
+        icon: "💼",
+      },
+      fieldOfWork: {
+        name: "Field of Work",
+        level: 3, // Highly specialized (tech/engineering)
+        unlocked: true,
+        icon: "🔧",
+      },
+      citizenship: {
+        name: "Country of Citizenship",
+        level: 1,
+        unlocked: true,
+        icon: "🌍",
+      },
+      investment: {
+        name: "Investment Amount",
+        level: 1, // $50k-$100k
+        unlocked: true,
+        icon: "💰",
+      },
+      language: {
+        name: "English Proficiency",
+        level: 4,
+        unlocked: true,
+        icon: "🗣️",
+      },
     },
-    fieldOfWork: {
-      name: "Field of Work",
-      level: 3, // 0=locked, 1=common, 2=specialized, 3=highly specialized
-      unlocked: true,
-      icon: "🔧",
+  },
+
+  // Scenario 3: H-1B professional exploring advanced options
+  H1B_PROFESSIONAL: {
+    name: "Priya Sharma",
+    currentStatus: "work_visa_holder",
+    currentVisa: "h1b", // Starting from H-1B
+    skills: {
+      education: {
+        name: "Education Level",
+        level: 4, // Advanced degree
+        unlocked: true,
+        icon: "🎓",
+      },
+      workExperience: {
+        name: "Work Experience",
+        level: 4, // 5+ years
+        unlocked: true,
+        icon: "💼",
+      },
+      fieldOfWork: {
+        name: "Field of Work",
+        level: 4, // Highly specialized professional
+        unlocked: true,
+        icon: "🔧",
+      },
+      citizenship: {
+        name: "Country of Citizenship",
+        level: 2, // Most countries
+        unlocked: true,
+        icon: "🌍",
+      },
+      investment: {
+        name: "Investment Amount",
+        level: 2, // $100k-$500k
+        unlocked: true,
+        icon: "💰",
+      },
+      language: {
+        name: "English Proficiency",
+        level: 5, // Native/fluent
+        unlocked: true,
+        icon: "🗣️",
+      },
     },
-    citizenship: {
-      name: "Country of Citizenship",
-      level: 1, // 0=locked, 1=restricted countries, 2=most countries, 3=priority countries
-      unlocked: true,
-      icon: "🌍",
-    },
-    investment: {
-      name: "Investment Amount",
-      level: 2, // 0=locked, 1=$50k-$100k, 2=$100k-$500k, 3=$500k+
-      unlocked: false, // Currently locked
-      icon: "💰",
-    },
-    language: {
-      name: "English Proficiency",
-      level: 4, // 0-5 scale
-      unlocked: true,
-      icon: "🗣️",
+  },
+
+  // Scenario 4: EB-2 green card applicant
+  ADVANCED_SEEKER: {
+    name: "Chen Wei",
+    currentStatus: "employment_based",
+    currentVisa: "eb2", // Starting from EB-2
+    skills: {
+      education: {
+        name: "Education Level",
+        level: 5, // PhD
+        unlocked: true,
+        icon: "🎓",
+      },
+      workExperience: {
+        name: "Work Experience",
+        level: 5, // 7+ years
+        unlocked: true,
+        icon: "💼",
+      },
+      fieldOfWork: {
+        name: "Field of Work",
+        level: 5, // Leading expert
+        unlocked: true,
+        icon: "🔧",
+      },
+      citizenship: {
+        name: "Country of Citizenship",
+        level: 3, // Priority country
+        unlocked: true,
+        icon: "🌍",
+      },
+      investment: {
+        name: "Investment Amount",
+        level: 3, // $500k+
+        unlocked: true,
+        icon: "💰",
+      },
+      language: {
+        name: "English Proficiency",
+        level: 5,
+        unlocked: true,
+        icon: "🗣️",
+      },
     },
   },
 };
+
+// ============================================================================
+// ACTIVE USER PROFILE (Change this to test different scenarios)
+// ============================================================================
+// Options: PROFILES.FRESH_START, PROFILES.F1_STUDENT, PROFILES.H1B_PROFESSIONAL, PROFILES.ADVANCED_SEEKER
+export const userProfile = PROFILES.F1_STUDENT;
 
 // ============================================================================
 // VISA PATHS DATA - HIERARCHICAL STRUCTURE

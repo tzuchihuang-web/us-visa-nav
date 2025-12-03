@@ -304,12 +304,19 @@ function VisaNodeElement({
         </div>
       )}
 
-      {/* Hover tooltip/card */}
+      {/* Hover tooltip/card - Smart positioning to stay in viewport */}
       {isHovered && (
         <div
-          className="absolute left-20 top-1/2 -translate-y-1/2 w-72 bg-white rounded-xl shadow-2xl p-5 border border-gray-200 z-50"
+          className="absolute w-72 bg-white rounded-xl shadow-2xl p-5 border border-gray-200 z-50"
           style={{
             animation: "slideIn 150ms ease-out",
+            // Smart positioning: show to the right, but adjust vertically to stay in viewport
+            left: "calc(100% + 20px)",
+            top: position.y < 25 ? "0" : position.y > 75 ? "auto" : "50%",
+            bottom: position.y > 75 ? "0" : "auto",
+            transform: position.y < 25 || position.y > 75 ? "none" : "translateY(-50%)",
+            marginTop: position.y < 25 ? "0" : position.y > 75 ? "0" : "0",
+            pointerEvents: "auto",
           }}
         >
           {/* Visa name */}
