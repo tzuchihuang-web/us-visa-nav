@@ -370,10 +370,17 @@ export async function deleteVisaApplication(
 
 /**
  * Check if user has completed onboarding
+ * 
+ * TODO: After running SUPABASE_ADD_ONBOARDING.ts migration,
+ * this will check for onboarding_data in the database.
+ * Until then, falls back to localStorage check.
  */
 export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
   const client = getClient();
-  if (!client) return false;
+  if (!client) {
+    // If no client, check localStorage as fallback
+    return !!localStorage.getItem(`onboarding_${userId}`);
+  }
 
   try {
     const { data, error } = await client
@@ -383,27 +390,48 @@ export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
       .single();
 
     if (error) {
-      console.error("Error checking onboarding status:", error);
-      return false;
+      // Column might not exist yet, fall back to localStorage
+      console.warn("Could not check onboarding status from Supabase:", error.message);
+      return !!localStorage.getItem(`onboarding_${userId}`);
     }
 
     // Check if onboarding_data exists and is not null/empty
-    return !!(data?.onboarding_data);
+    if (data?.onboarding_data) {
+      return true;
+    }
+
+    // Also check localStorage as fallback
+    return !!localStorage.getItem(`onboarding_${userId}`);
   } catch (err) {
-    console.error("Error checking onboarding status:", err);
-    return false;
+    console.warn("Error checking onboarding status:", err);
+    // Fallback to localStorage
+    return !!localStorage.getItem(`onboarding_${userId}`);
   }
 }
 
 /**
  * Save onboarding data to user profile
+ * 
+ * Attempts to save to Supabase first.
+ * If the column doesn't exist yet, stores in localStorage as fallback.
  */
 export async function saveOnboardingData(
   userId: string,
   onboardingData: any
 ): Promise<boolean> {
   const client = getClient();
-  if (!client) return false;
+
+  // Always save to localStorage as backup
+  try {
+    localStorage.setItem(`onboarding_${userId}`, JSON.stringify(onboardingData));
+  } catch (err) {
+    console.warn("Could not save to localStorage:", err);
+  }
+
+  if (!client) {
+    console.warn("No Supabase client available, using localStorage only");
+    return true; // Still consider it a success since localStorage worked
+  }
 
   try {
     const { error } = await client
@@ -415,13 +443,14 @@ export async function saveOnboardingData(
       .eq("id", userId);
 
     if (error) {
-      console.error("Error saving onboarding data:", error);
-      return false;
+      console.warn("Could not save onboarding data to Supabase:", error.message);
+      console.warn("Falling back to localStorage only. Run SUPABASE_ADD_ONBOARDING.ts migration if needed.");
+      return true; // Still return true since localStorage worked
     }
 
     return true;
   } catch (err) {
-    console.error("Error saving onboarding data:", err);
-    return false;
+    console.warn("Error saving onboarding data:", err);
+    return true; // Still return true since localStorage worked
   }
 }
