@@ -367,3 +367,61 @@ export async function deleteVisaApplication(
     return false;
   }
 }
+
+/**
+ * Check if user has completed onboarding
+ */
+export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
+  const client = getClient();
+  if (!client) return false;
+
+  try {
+    const { data, error } = await client
+      .from("user_profiles")
+      .select("onboarding_data")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      console.error("Error checking onboarding status:", error);
+      return false;
+    }
+
+    // Check if onboarding_data exists and is not null/empty
+    return !!(data?.onboarding_data);
+  } catch (err) {
+    console.error("Error checking onboarding status:", err);
+    return false;
+  }
+}
+
+/**
+ * Save onboarding data to user profile
+ */
+export async function saveOnboardingData(
+  userId: string,
+  onboardingData: any
+): Promise<boolean> {
+  const client = getClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client
+      .from("user_profiles")
+      .update({
+        onboarding_data: onboardingData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+
+    if (error) {
+      console.error("Error saving onboarding data:", error);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error("Error saving onboarding data:", err);
+    return false;
+  }
+}

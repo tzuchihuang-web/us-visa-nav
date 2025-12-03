@@ -62,16 +62,28 @@ export const useOnboarding = () => {
     setCurrentStep(3);
   };
 
-  // STEP 3: Years of experience
+  // STEP 3: Years of experience (just update, don't auto-advance)
   const setYearsOfExperience = (years: number) => {
     setOnboardingData((prev) => ({
       ...prev,
       yearsOfExperience: years,
+    }));
+    // Don't auto-advance - user must click Next/Complete button
+  };
+
+  // Complete onboarding (called when user clicks Complete button)
+  const completeOnboarding = () => {
+    setOnboardingData((prev) => ({
+      ...prev,
       completedAt: new Date().toISOString(),
       completedStep: 3,
     }));
-    // Mark as completed - will trigger redirect
-    setCurrentStep(4); // Special step for completion
+    setCurrentStep(4); // Trigger completion and redirect
+  };
+
+  // Go to a specific step (for Next button)
+  const goToStep = (step: number) => {
+    setCurrentStep(step);
   };
 
   // Go back to previous step
@@ -121,8 +133,10 @@ export const useOnboarding = () => {
     setImmigrationGoal,
     setEducationLevel,
     setYearsOfExperience,
+    goToStep,
     goBack,
     skipOnboarding,
+    completeOnboarding,
     isStepValid,
     isCompleted: currentStep === 4,
   };

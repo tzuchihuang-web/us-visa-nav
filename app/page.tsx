@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { hasCompletedOnboarding } from '@/lib/supabase/client';
 import { Header } from '@/components/Header';
 import { SkillTree } from "@/components/SkillTree";
 import { VisaMap } from "@/components/VisaMap";
@@ -11,47 +12,42 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 /**
  * Home Page / Visa Map
  * 
- * FIRST-TIME USER CHECK (Line 15-31):
- * - After login, checks if user has completed onboarding
- * - If onboarding not found in localStorage → redirect to /onboarding
+ * FIRST-TIME USER CHECK (Line 28-42):
+ * - After login, checks if user has completed onboarding via Supabase
+ * - If onboarding not found → redirect to /onboarding
  * - If onboarding exists → show the visa map and skill tree
+ * - Returns user directly on subsequent logins
  * 
  * CUSTOMIZATION:
- * - Change redirect logic in useEffect
- * - Update where onboarding data is stored (line 28: localStorage)
- * - Add backend call to fetch onboarding from Supabase when ready
+ * - Uses hasCompletedOnboarding() from Supabase service
+ * - Checks onboarding_data field in user_profiles table
  */
 
 export default function Home() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
 
-  // FIRST-TIME USER CHECK: Verify onboarding completion
+  // FIRST-TIME USER CHECK: Verify onboarding completion via Supabase
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth');
       return;
     }
 
-    if (user) {
-      // TODO: When connected to backend, fetch from Supabase:
-      // const { data } = await supabase
-      //   .from('user_profiles')
-      //   .select('onboarding_completed')
-      //   .eq('id', user.id)
-      //   .single();
-      
-      // For now: Check localStorage for demo
-      const onboardingData = localStorage.getItem(`onboarding_${user.id}`);
-      
-      if (!onboardingData) {
-        // REDIRECT TO ONBOARDING: First-time user, no answers saved
-        router.push('/onboarding');
-      }
+    if (user && !onboardingChecked) {
+      // Check if user has completed onboarding in Supabase
+      hasCompletedOnboarding(user.id).then((completed) => {
+        if (!completed) {
+          // REDIRECT TO ONBOARDING: First-time user, no onboarding data in Supabase
+          router.push('/onboarding');
+        }
+        setOnboardingChecked(true);
+      });
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, onboardingChecked, router]);
 
-  if (authLoading) {
+  if (authLoading || !onboardingChecked) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">

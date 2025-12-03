@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useOnboarding } from '@/lib/hooks/useOnboarding';
+import { saveOnboardingData } from '@/lib/supabase/client';
 import { ONBOARDING_OPTIONS } from '@/lib/types/onboarding';
 import { Button } from '@/components/ui/button';
 import styles from './onboarding.module.css';
@@ -38,8 +39,10 @@ export default function OnboardingPage() {
     setImmigrationGoal,
     setEducationLevel,
     setYearsOfExperience,
+    goToStep,
     goBack,
     skipOnboarding,
+    completeOnboarding,
     isStepValid,
     isCompleted,
   } = useOnboarding();
@@ -54,15 +57,19 @@ export default function OnboardingPage() {
   // Redirect after completion
   useEffect(() => {
     if (isCompleted) {
-      // TODO: Save onboardingData to Supabase user_profiles.onboarding_data
-      // For now, we store in localStorage for demo
+      // Save onboardingData to Supabase
       if (user) {
+        saveOnboardingData(user.id, onboardingData);
+        // Also keep in localStorage as backup
         localStorage.setItem(
           `onboarding_${user.id}`,
           JSON.stringify(onboardingData)
         );
       }
-      router.push('/');
+      // Redirect to home after a short delay to ensure data is saved
+      setTimeout(() => {
+        router.push('/');
+      }, 500);
     }
   }, [isCompleted, user, onboardingData, router]);
 
@@ -258,7 +265,11 @@ export default function OnboardingPage() {
             <Button
               onClick={() => {
                 if (currentStep === 3) {
-                  setYearsOfExperience(onboardingData.yearsOfExperience || 0);
+                  // On last step, complete the onboarding
+                  completeOnboarding();
+                } else {
+                  // On other steps, advance to next
+                  goToStep(currentStep + 1);
                 }
               }}
               disabled={!isStepValid()}
