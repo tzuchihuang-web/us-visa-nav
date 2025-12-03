@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { VISA_KNOWLEDGE_BASE, VisaDefinition } from '@/lib/visa-knowledge-base';
+import { VISA_KNOWLEDGE_BASE, Visa, VisaStage } from '@/src/data/visaKnowledgeBase';
 import { UserProfile } from '@/lib/types';
 import { getVisaRecommendations } from '@/lib/visa-matching-engine';
 
@@ -12,26 +12,26 @@ interface VisaMapRedesignedProps {
 }
 
 /** 地圖上要顯示的簽證大分類（排除旅遊等） */
-const INCLUDED_CATEGORIES = ['student', 'worker', 'immigrant', 'investor'] as const;
+const INCLUDED_CATEGORIES = ['student', 'work', 'immigrant', 'investment'] as const;
 
-/** tier 映射 - 根據 visa tier 決定顯示位置 */
-type TierKey = 'level0' | 'level1' | 'level2' | 'level3';
+/** stage 映射 - 根據 visa stage 決定顯示列位置 */
+type StageKey = 'column0' | 'column1' | 'column2' | 'column3';
 
-// Map visa.tier to display tiers
-const TIER_MAPPING: Record<string, TierKey> = {
-  start: 'level0',
-  entry: 'level1',
-  intermediate: 'level2',
-  advanced: 'level3',
+// Map visa.stage to display columns - STRICT MAPPING
+const STAGE_MAPPING: Record<VisaStage, StageKey> = {
+  current: 'column0',
+  next: 'column1',
+  future: 'column2',
+  long_term: 'column3',
 };
 
-const TIER_ORDER: TierKey[] = ['level0', 'level1', 'level2', 'level3'];
+const STAGE_ORDER: StageKey[] = ['column0', 'column1', 'column2', 'column3'];
 
 /** difficulty 數值 → Y座標 offset */
-const DIFFICULTY_OFFSET: Record<number, number> = {
-  1: 0,
-  2: 1,
-  3: 2,
+const DIFFICULTY_OFFSET: Record<string, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
 };
 
 const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
@@ -40,12 +40,11 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   onVisaSelect,
 }) => {
   // ========================================================================
-  // 1. 把 VISA_KNOWLEDGE_BASE (Record) 變成好查詢的 map（id → visa）
+  // 1. 把 VISA_KNOWLEDGE_BASE (Array) 變成好查詢的 map（id → visa）
   // ========================================================================
   const visaById = useMemo(() => {
-    const map: Record<string, VisaDefinition> = {};
-    Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
-      const visa = VISA_KNOWLEDGE_BASE[key];
+    const map: Record<string, Visa> = {};
+    VISA_KNOWLEDGE_BASE.forEach((visa) => {
       map[visa.id.toLowerCase()] = visa;
     });
     return map;
@@ -73,16 +72,14 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   const adjacencyGraph = useMemo(() => {
     const graph: Record<string, string[]> = {};
 
-    Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
-      const visa = VISA_KNOWLEDGE_BASE[key];
-      
+    VISA_KNOWLEDGE_BASE.forEach((visa) => {
       // 只圖上顯示特定類別
       if (!INCLUDED_CATEGORIES.includes(visa.category as any)) return;
 
       const id = visa.id.toLowerCase();
       const nextSteps =
         visa.commonNextSteps
-          ?.map((step) => step.visaId.toLowerCase())
+          ?.map((step) => step.toLowerCase())
           .filter((nextId) => {
             const nextVisa = visaById[nextId];
             return !!nextVisa && INCLUDED_CATEGORIES.includes(nextVisa.category as any);
@@ -104,8 +101,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
 
     // 沒有 currentVisa：先把所有簽證當成 reachable
     if (!current) {
-      Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
-        const visa = VISA_KNOWLEDGE_BASE[key];
+      VISA_KNOWLEDGE_BASE.forEach((visa) => {
         if (!INCLUDED_CATEGORIES.includes(visa.category as any)) return;
         reachable.add(visa.id.toLowerCase());
       });
@@ -138,21 +134,19 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   }, [userProfile.currentVisa, adjacencyGraph, visaById]);
 
   // ========================================================================
-  // 6. 用 tier → tier 排版欄位，但只顯示 reachable 的簽證
+  // 6. 用 stage → column 排版欄位，但只顯示 reachable 的簽證
   // ========================================================================
-  const visasByTier = useMemo(() => {
-    const tiers: Record<TierKey, string[]> = {
-      level0: [],
-      level1: [],
-      level2: [],
-      level3: [],
+  const visasByStage = useMemo(() => {
+    const stages: Record<StageKey, string[]> = {
+      column0: [],
+      column1: [],
+      column2: [],
+      column3: [],
     };
 
     const currentVisaId = userProfile.currentVisa?.toLowerCase() ?? null;
 
-    Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
-      const visa = VISA_KNOWLEDGE_BASE[key];
-      
+    VISA_KNOWLEDGE_BASE.forEach((visa) => {
       if (!INCLUDED_CATEGORIES.includes(visa.category as any)) return;
 
       const id = visa.id.toLowerCase();
@@ -160,24 +154,24 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
       // 有 currentVisa 時，只顯示 reachable 的簽證
       if (currentVisaId && !reachableVisaIds.has(id)) return;
 
-      // 根據 visa.tier 映射到顯示層級
-      const tierKey = TIER_MAPPING[visa.tier] || 'level1';
+      // 根據 visa.stage 映射到顯示欄位 - STRICT MAPPING
+      const stageKey = STAGE_MAPPING[visa.stage];
       
-      // 如果是當前簽證，放在 level0
+      // 如果是當前簽證，強制放在 column0 (override stage)
       if (currentVisaId && id === currentVisaId) {
-        tiers.level0.push(id);
+        stages.column0.push(id);
       } else {
-        tiers[tierKey].push(id);
+        stages[stageKey].push(id);
       }
     });
 
-    // 沒有 currentVisa：在 level0 加一個「START」假的節點
+    // 沒有 currentVisa：在 column0 加一個「START」假的節點（可選）
     if (!userProfile.currentVisa) {
-      tiers.level0 = ['start'];
+      stages.column0 = ['start'];
     }
 
-    console.info('[VisaMapRedesigned] Final tier structure (by tier):', tiers);
-    return tiers;
+    console.info('[VisaMapRedesigned] Final stage structure (by stage):', stages);
+    return stages;
   }, [reachableVisaIds, userProfile.currentVisa]);
 
   // ========================================================================
@@ -236,23 +230,23 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   }, [selectedVisa, userProfile.currentVisa, adjacencyGraph]);
 
   // ========================================================================
-  // 8. layout：依 tier 排 X，依 index + difficulty 排 Y
+  // 8. layout：依 stage 排 X (column)，依 index + difficulty 排 Y
   // ========================================================================
   const getVisaPosition = (
-    tier: TierKey,
+    stage: StageKey,
     index: number,
     total: number,
-    visa?: VisaDefinition
+    visa?: Visa
   ) => {
-    const tierIdx = TIER_ORDER.indexOf(tier);
+    const stageIdx = STAGE_ORDER.indexOf(stage);
     const baseX = 160; // 起始 X
-    const tierSpacingX = 260;
-    const x = baseX + tierIdx * tierSpacingX;
+    const stageSpacingX = 260;
+    const x = baseX + stageIdx * stageSpacingX;
 
     const baseY = 260; // 整張圖往下移一點，避免貼頂
     const verticalSpacing = 110;
 
-    const difficultyValue = visa?.difficulty ?? 2;
+    const difficultyValue = visa?.difficulty ?? 'medium';
     const difficultyOffset = (DIFFICULTY_OFFSET[difficultyValue] ?? 0) * -12;
 
     const y =
@@ -282,19 +276,19 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
     const lines: React.ReactNode[] = [];
     let lineId = 0;
 
-    const visaPositionMap = new Map<string, { tier: TierKey; index: number; total: number }>();
+    const visaPositionMap = new Map<string, { stage: StageKey; index: number; total: number }>();
 
-    TIER_ORDER.forEach((tier) => {
-      const visas = visasByTier[tier] || [];
+    STAGE_ORDER.forEach((stage) => {
+      const visas = visasByStage[stage] || [];
       visas.forEach((visaId, index) => {
-        visaPositionMap.set(visaId, { tier, index, total: visas.length });
+        visaPositionMap.set(visaId, { stage, index, total: visas.length });
       });
     });
 
-    TIER_ORDER.forEach((tier) => {
-      const visasInTier = visasByTier[tier] || [];
+    STAGE_ORDER.forEach((stage) => {
+      const visasInStage = visasByStage[stage] || [];
 
-      visasInTier.forEach((visaId) => {
+      visasInStage.forEach((visaId) => {
         // pseudo "start" node 沒有 edges
         if (visaId === 'start') return;
 
@@ -302,7 +296,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
         if (!fromMeta) return;
 
         const fromVisa = visaById[visaId];
-        const fromPos = getVisaPosition(fromMeta.tier, fromMeta.index, fromMeta.total, fromVisa);
+        const fromPos = getVisaPosition(fromMeta.stage, fromMeta.index, fromMeta.total, fromVisa);
         const neighbors = adjacencyGraph[visaId] || [];
 
         neighbors.forEach((nextId) => {
@@ -310,7 +304,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
           if (!toMeta) return;
 
           const toVisa = visaById[nextId];
-          const toPos = getVisaPosition(toMeta.tier, toMeta.index, toMeta.total, toVisa);
+          const toPos = getVisaPosition(toMeta.stage, toMeta.index, toMeta.total, toVisa);
           const status = (visaRecommendations[nextId]?.status ?? 'locked') as
             | 'recommended'
             | 'available'
@@ -347,14 +341,14 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
     const nodes: React.ReactNode[] = [];
     const currentVisaId = userProfile.currentVisa?.toLowerCase() ?? null;
 
-    TIER_ORDER.forEach((tier) => {
-      const visaIds = visasByTier[tier] || [];
+    STAGE_ORDER.forEach((stage) => {
+      const visaIds = visasByStage[stage] || [];
       const total = visaIds.length;
 
       visaIds.forEach((visaId, index) => {
         if (visaId === 'start') {
           // 新手沒有 currentVisa 的 "Start" 節點
-          const pos = getVisaPosition('level0', 0, 1);
+          const pos = getVisaPosition('column0', 0, 1);
           nodes.push(
             <div
               key="start-node"
@@ -375,7 +369,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
         const visa = visaById[visaId];
         if (!visa) return;
 
-        const pos = getVisaPosition(tier, index, total, visa);
+        const pos = getVisaPosition(stage, index, total, visa);
 
         const status = (visaRecommendations[visaId]?.status ?? 'locked') as
           | 'recommended'
@@ -422,10 +416,10 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
             }}
           >
             <div className="text-2xl">
-              {visa.emoji ?? '🛂'}
+              {visa.iconEmoji ?? '🛂'}
             </div>
             <div className="text-xs font-semibold leading-tight">
-              {visa.code ?? visa.id.toUpperCase()}
+              {visa.shortName ?? visa.id.toUpperCase()}
             </div>
 
             {/* "You are here" 標籤 */}
@@ -474,12 +468,12 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
         </div>
       </div>
 
-      {/* 上方欄位標題：對應 tier */}
+      {/* 上方欄位標題：對應 stage (current/next/future/long_term) */}
       <div className="absolute top-4 left-0 right-0 flex justify-start gap-[140px] px-8 text-xs text-slate-400 font-semibold pointer-events-none">
-        <div>{hasCurrent ? 'Current Visa' : 'Start / Entry'}</div>
-        <div>{hasCurrent ? 'Next Steps' : 'Entry Options'}</div>
-        <div>{hasCurrent ? 'Future Options' : 'Future Options'}</div>
-        <div>{hasCurrent ? 'Long-term Goals' : 'Long-term Goals'}</div>
+        <div>Current</div>
+        <div>Next Steps</div>
+        <div>Future Options</div>
+        <div>Long-term Goals</div>
       </div>
 
       {/* SVG edge canvas */}

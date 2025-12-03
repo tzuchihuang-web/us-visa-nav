@@ -11,7 +11,7 @@ import VisaMapRedesigned from "@/components/VisaMapRedesigned";
 import { VisaDetailPanel } from "@/components/VisaDetailPanel";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LegalDisclaimer } from "@/components/LegalDisclaimer";
-import { VISA_KNOWLEDGE_BASE, VisaDefinition } from '@/lib/visa-knowledge-base';
+import { VISA_KNOWLEDGE_BASE, Visa } from '@/src/data/visaKnowledgeBase';
 import { getVisaRecommendations } from '@/lib/visa-matching-engine';
 import { UserProfile } from '@/lib/types';
 
@@ -57,9 +57,8 @@ export default function Home() {
 
   // Create visaById lookup from VISA_KNOWLEDGE_BASE
   const visaById = useMemo(() => {
-    const map = new Map<string, VisaDefinition>();
-    Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
-      const visa = VISA_KNOWLEDGE_BASE[key];
+    const map = new Map<string, Visa>();
+    VISA_KNOWLEDGE_BASE.forEach((visa) => {
       map.set(visa.id.toLowerCase(), visa);
     });
     return map;

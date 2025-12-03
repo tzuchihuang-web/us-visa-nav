@@ -100,8 +100,7 @@ export const VISA_KNOWLEDGE_BASE: Visa[] = [
     difficulty: "medium",
     notes:
       "F-1 can often lead to work authorization options such as OPT, and sometimes onward to H-1B, O-1, or employment-based green cards.",
-    commonNextSteps: ["OPT", "H1B", "O1", "EB2", "L1B", "E2", "O1"
-    ],
+    commonNextSteps: ["OPT", "H1B", "O1", "EB2", "L1B", "E2"],
   },
 
   // ---------------------------------------------------------------------------
