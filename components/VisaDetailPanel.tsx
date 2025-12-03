@@ -53,19 +53,19 @@ export function VisaDetailPanel({
       bg: 'bg-green-50',
       border: 'border-green-200',
       badge: 'bg-green-100 text-green-800',
-      text: '⭐ Recommended',
+      text: '⭐ May Be Eligible',
     },
     available: {
       bg: 'bg-blue-50',
       border: 'border-blue-200',
       badge: 'bg-blue-100 text-blue-800',
-      text: '✓ Available',
+      text: '✓ Could Be a Path',
     },
     locked: {
       bg: 'bg-gray-50',
       border: 'border-gray-200',
       badge: 'bg-gray-100 text-gray-800',
-      text: '🔒 Locked',
+      text: '🔒 Strengthen Skills First',
     },
   };
 
@@ -186,7 +186,7 @@ export function VisaDetailPanel({
           {visa.status === 'locked' && (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-900">
-                <strong>Not yet eligible:</strong> Improve your qualifications to unlock this visa.
+                <strong>Requirements not met:</strong> Strengthen your qualifications to explore this path.
               </p>
             </div>
           )}
@@ -194,7 +194,15 @@ export function VisaDetailPanel({
           {visa.status === 'recommended' && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
               <p className="text-sm text-green-900">
-                <strong>Great match!</strong> This visa aligns with your profile and goals.
+                <strong>May be eligible:</strong> This visa aligns with your profile and could be a good next step.
+              </p>
+            </div>
+          )}
+
+          {visa.status === 'available' && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-900">
+                <strong>Could be a path:</strong> This visa could work for your situation with some qualification strengthening.
               </p>
             </div>
           )}

@@ -449,15 +449,15 @@ export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[]
           </div>
           <div className="flex items-center gap-2">
             <span className="text-lg">⭐</span>
-            <span>Recommended - Great next step</span>
+            <span>Recommended - May be eligible</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-lg">✓</span>
-            <span>Available - You qualify</span>
+            <span>Available - Could be a path</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-lg">🔒</span>
-            <span>Locked - Requires more skills</span>
+            <span>Locked - Strengthen skills first</span>
           </div>
         </div>
       </div>
