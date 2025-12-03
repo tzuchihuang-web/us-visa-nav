@@ -28,6 +28,8 @@ interface VisaDetailPanelProps {
     category: string;
     status: 'recommended' | 'available' | 'locked';
     requirements?: VisaRequirements;
+    timeHorizon?: 'short' | 'medium' | 'long';
+    difficulty?: 1 | 2 | 3;
   } | null;
   userMeets?: {
     education?: boolean;
@@ -108,6 +110,32 @@ export function VisaDetailPanel({
           <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${config.badge}`}>
             {config.text}
           </div>
+
+          {/* Meta Info: Time Horizon & Difficulty */}
+          {(visa.timeHorizon || visa.difficulty) && (
+            <div className="flex gap-4 mt-3 text-xs">
+              {visa.timeHorizon && (
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-500">⏱️</span>
+                  <span className="text-gray-700 font-medium">
+                    {visa.timeHorizon === 'short' && 'Short-term (6mo-1yr)'}
+                    {visa.timeHorizon === 'medium' && 'Medium-term (1-3yr)'}
+                    {visa.timeHorizon === 'long' && 'Long-term (3+ yr)'}
+                  </span>
+                </div>
+              )}
+              {visa.difficulty && (
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-500">📊</span>
+                  <span className="text-gray-700 font-medium">
+                    {visa.difficulty === 1 && 'Easy'}
+                    {visa.difficulty === 2 && 'Moderate'}
+                    {visa.difficulty === 3 && 'Difficult'}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Content */}

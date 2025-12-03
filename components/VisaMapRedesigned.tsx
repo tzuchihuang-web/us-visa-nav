@@ -50,7 +50,7 @@ interface VisaMapRedesignedProps {
   /** Currently selected visa on map */
   selectedVisa?: string | null;
   /** Callback when user clicks a visa node */
-  onVisaSelect: (visaCode: string) => void;
+  onVisaSelect: (visaId: string) => void;
 }
 
 const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
@@ -58,6 +58,14 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   selectedVisa,
   onVisaSelect,
 }) => {
+  // ========================================================================
+  // CENTRALIZED CLICK HANDLER
+  // ========================================================================
+  const handleNodeClick = (visaId: string) => {
+    console.log('[VisaMap] Node clicked:', visaId);
+    onVisaSelect(visaId);
+  };
+
   // ========================================================================
   // SCORE ALL VISAS USING MATCHING ENGINE
   // ========================================================================
@@ -377,7 +385,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
         nodes.push(
           <button
             key={visaId}
-            onClick={() => onVisaSelect(visaId)}
+            onClick={() => handleNodeClick(visaId)}
             className={`absolute w-20 h-20 rounded-full flex flex-col items-center justify-center font-bold text-center transition-all duration-200 cursor-pointer group ${
               isSelected ? 'ring-2 ring-yellow-400 scale-110 z-30' : 'hover:scale-105 z-10'
             } ${

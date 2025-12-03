@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useVisaNavigatorProfile } from '@/lib/hooks/useVisaNavigatorProfile';
@@ -11,7 +11,8 @@ import VisaMapRedesigned from "@/components/VisaMapRedesigned";
 import { VisaDetailPanel } from "@/components/VisaDetailPanel";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LegalDisclaimer } from "@/components/LegalDisclaimer";
-import { visaPaths } from '@/lib/mapData';
+import { VISA_KNOWLEDGE_BASE, VisaDefinition } from '@/lib/visa-knowledge-base';
+import { getVisaRecommendations } from '@/lib/visa-matching-engine';
 import { UserProfile } from '@/lib/types';
 
 /**
@@ -53,6 +54,39 @@ export default function Home() {
       });
     }
   }, [visaProfile]);
+
+  // Create visaById lookup from VISA_KNOWLEDGE_BASE
+  const visaById = useMemo(() => {
+    const map = new Map<string, VisaDefinition>();
+    Object.keys(VISA_KNOWLEDGE_BASE).forEach((key) => {
+      const visa = VISA_KNOWLEDGE_BASE[key];
+      map.set(visa.id.toLowerCase(), visa);
+    });
+    return map;
+  }, []);
+
+  // Get visa recommendations for matching engine
+  const visaRecommendations = useMemo(
+    () => visaProfile ? getVisaRecommendations(visaProfile) : {},
+    [visaProfile]
+  );
+
+  // Derive selected visa from visaKnowledgeBase
+  const selectedVisaData = useMemo(() => {
+    if (!selectedVisa) return null;
+    const visa = visaById.get(selectedVisa.toLowerCase());
+    if (!visa) return null;
+
+    // Get matching status from recommendations
+    const matchResult = visaRecommendations[visa.id];
+    const status = matchResult?.status || 'locked';
+
+    return {
+      visa,
+      status,
+      matchResult,
+    };
+  }, [selectedVisa, visaById, visaRecommendations]);
 
   // FIRST-TIME USER CHECK: Verify onboarding completion via Supabase
   useEffect(() => {
@@ -124,29 +158,41 @@ export default function Home() {
             </div>
 
             {/* Fixed Right Side: Visa Detail Panel */}
-            {isPanelOpen && selectedVisa && (() => {
-              const visaData = visaPaths.find(v => v.id === selectedVisa);
-              
-              return visaData ? (
-                <VisaDetailPanel
-                  isOpen={isPanelOpen}
-                  visa={{
-                    id: visaData.id,
-                    name: visaData.name,
-                    emoji: visaData.emoji,
-                    description: visaData.description,
-                    fullDescription: visaData.fullDescription,
-                    category: visaData.category,
-                    status: 'recommended',
-                  }}
-                  userMeets={{
-                    education: true,
-                    experience: true,
-                  }}
-                  onClose={() => setIsPanelOpen(false)}
-                />
-              ) : null;
-            })()}
+            {isPanelOpen && selectedVisaData && (
+              <VisaDetailPanel
+                isOpen={isPanelOpen}
+                visa={{
+                  id: selectedVisaData.visa.id,
+                  name: selectedVisaData.visa.name,
+                  emoji: selectedVisaData.visa.emoji,
+                  description: selectedVisaData.visa.shortDescription,
+                  fullDescription: selectedVisaData.visa.officialDescription,
+                  category: selectedVisaData.visa.category,
+                  status: selectedVisaData.status,
+                  timeHorizon: selectedVisaData.visa.timeHorizon,
+                  difficulty: selectedVisaData.visa.difficulty,
+                  requirements: {
+                    education: selectedVisaData.visa.eligibilityRules
+                      .filter(r => r.field === 'educationLevel')
+                      .map(r => r.description)
+                      .join(', '),
+                    experience: selectedVisaData.visa.eligibilityRules
+                      .filter(r => r.field === 'yearsOfExperience')
+                      .map(r => r.description)
+                      .join(', '),
+                  },
+                }}
+                userMeets={{
+                  education: selectedVisaData.matchResult 
+                    ? !selectedVisaData.matchResult.failedRules.some(r => r.includes('education'))
+                    : false,
+                  experience: selectedVisaData.matchResult
+                    ? !selectedVisaData.matchResult.failedRules.some(r => r.includes('experience'))
+                    : false,
+                }}
+                onClose={() => setIsPanelOpen(false)}
+              />
+            )}
           </div>
 
           {/* Legal Disclaimer Footer */}
