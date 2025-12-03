@@ -13,10 +13,12 @@
 // ============================================================================
 // Customize the user's skills, education level, work experience, etc.
 // Locked nodes will restrict visa availability
+// IMPORTANT: Set currentVisa to determine the map's starting point
 
 export const userProfile = {
   name: "Alex Johnson",
   currentStatus: "international_student",
+  currentVisa: "f1", // null = no visa (show "Start" node), "f1" = starting from F-1, etc.
   skills: {
     education: {
       name: "Education Level",
@@ -58,12 +60,35 @@ export const userProfile = {
 };
 
 // ============================================================================
-// VISA PATHS DATA
+// VISA PATHS DATA - HIERARCHICAL STRUCTURE
 // ============================================================================
-// Define all visa types, their requirements, and visual position on the map
-// Requirements map to skill levels above
+// Visa nodes organized by category and hierarchy level
+// Each visa defines:
+//   - id, name, emoji, descriptions
+//   - tier: "start", "entry", "intermediate", "advanced"
+//   - requirements: skill level requirements
+//   - previousVisas: which visas can lead to this one
+//   - category: for grouping
 
 export const visaPaths = [
+  // ========== START NODE ==========
+  // Special "no visa" starting point
+  {
+    id: "start",
+    name: "Start Your Journey",
+    emoji: "🚀",
+    description: "Begin exploring U.S. visa options",
+    fullDescription:
+      "You are starting your U.S. visa journey. Explore various visa categories based on your qualifications and goals.",
+    category: "Start",
+    tier: "start",
+    requirements: {},
+    previousVisas: [] as string[],
+    color: "from-blue-400 to-blue-600",
+    badge: "bg-blue-100 text-blue-700",
+  },
+
+  // ========== ENTRY-LEVEL VISAS (Direct from start or from F-1) ==========
   {
     id: "f1",
     name: "F-1 Student",
@@ -72,19 +97,68 @@ export const visaPaths = [
     fullDescription:
       "The F-1 visa is for international students pursuing academic degrees at accredited U.S. institutions.",
     category: "Education",
-    // CUSTOMIZE: Adjust requirements to match your visa logic
+    tier: "entry",
     requirements: {
-      education: { min: 1 }, // Requires at least high school
-      citizenship: { min: 0 }, // No citizenship restrictions
-      language: { min: 2 }, // Requires some English proficiency
+      education: { min: 1 },
+      citizenship: { min: 0 },
+      language: { min: 2 },
     },
-    // Visual position on abstract map (0-100 scale)
-    position: { x: 20, y: 30 },
-    // Color for this visa path
+    previousVisas: ["start"], // Can reach from start
     color: "from-blue-400 to-blue-600",
-    // Badge style
     badge: "bg-blue-100 text-blue-700",
-    relatedVisas: ["h1b", "o1"], // Possible transitions
+  },
+  {
+    id: "j1",
+    name: "J-1 Exchange",
+    emoji: "🌍",
+    description: "Exchange visitor programs",
+    fullDescription:
+      "The J-1 visa is for exchange visitors, scholars, professors, researchers, and students.",
+    category: "Exchange",
+    tier: "entry",
+    requirements: {
+      education: { min: 0 },
+      citizenship: { min: 0 },
+      language: { min: 1 },
+    },
+    previousVisas: ["start"],
+    color: "from-green-400 to-green-600",
+    badge: "bg-green-100 text-green-700",
+  },
+  {
+    id: "b2",
+    name: "B-2 Tourist",
+    emoji: "✈️",
+    description: "Tourist or visitor visa",
+    fullDescription:
+      "The B-2 visa is for tourism, visiting family, or other temporary visits to the U.S.",
+    category: "Visitor",
+    tier: "entry",
+    requirements: {
+      citizenship: { min: 0 },
+    },
+    previousVisas: ["start"],
+    color: "from-purple-400 to-purple-600",
+    badge: "bg-purple-100 text-purple-700",
+  },
+
+  // ========== INTERMEDIATE VISAS (From F-1 or other entry visas) ==========
+  {
+    id: "opt",
+    name: "OPT - Work Experience",
+    emoji: "💼",
+    description: "Optional Practical Training after F-1",
+    fullDescription:
+      "OPT allows F-1 students to work in the U.S. for up to 12 months (or 36 months for STEM) after graduation.",
+    category: "Work",
+    tier: "intermediate",
+    requirements: {
+      education: { min: 2 },
+      workExperience: { min: 0 },
+    },
+    previousVisas: ["f1"], // Only from F-1
+    color: "from-yellow-400 to-orange-500",
+    badge: "bg-yellow-100 text-yellow-700",
   },
   {
     id: "h1b",
@@ -94,35 +168,16 @@ export const visaPaths = [
     fullDescription:
       "Allows U.S. employers to temporarily employ foreign workers in specialty occupations.",
     category: "Work",
+    tier: "intermediate",
     requirements: {
-      education: { min: 2 }, // Requires Bachelor's degree
+      education: { min: 2 },
       workExperience: { min: 1 },
       fieldOfWork: { min: 1 },
       citizenship: { min: 0 },
     },
-    position: { x: 70, y: 25 },
+    previousVisas: ["f1", "opt", "start"], // From F-1, OPT, or direct from start
     color: "from-purple-400 to-purple-600",
     badge: "bg-purple-100 text-purple-700",
-    relatedVisas: ["l1", "eb1"],
-  },
-  {
-    id: "o1",
-    name: "O-1 Talent",
-    emoji: "⭐",
-    description: "For individuals with extraordinary ability",
-    fullDescription:
-      "For individuals who possess extraordinary ability in sciences, arts, education, business, or athletics.",
-    category: "Achievement",
-    requirements: {
-      education: { min: 2 },
-      workExperience: { min: 2 },
-      fieldOfWork: { min: 2 }, // Requires specialized field
-      citizenship: { min: 0 },
-    },
-    position: { x: 50, y: 65 },
-    color: "from-yellow-400 to-orange-500",
-    badge: "bg-yellow-100 text-yellow-700",
-    relatedVisas: ["eb1"],
   },
   {
     id: "l1",
@@ -132,34 +187,34 @@ export const visaPaths = [
     fullDescription:
       "For managers and specialized knowledge workers transferring within the same company to a U.S. office.",
     category: "Work",
+    tier: "intermediate",
     requirements: {
       workExperience: { min: 2 },
       fieldOfWork: { min: 1 },
       citizenship: { min: 0 },
     },
-    position: { x: 75, y: 50 },
+    previousVisas: ["start"], // Direct path
     color: "from-green-400 to-green-600",
     badge: "bg-green-100 text-green-700",
-    relatedVisas: ["h1b", "eb1"],
   },
   {
-    id: "eb1",
-    name: "EB-1 Green Card",
-    emoji: "🏆",
-    description: "Employment-based green card",
+    id: "o1",
+    name: "O-1 Talent",
+    emoji: "⭐",
+    description: "For individuals with extraordinary ability",
     fullDescription:
-      "Permanent residency for individuals with extraordinary ability or advanced degree holders.",
-    category: "Permanent",
+      "For individuals who possess extraordinary ability in sciences, arts, education, business, or athletics.",
+    category: "Achievement",
+    tier: "intermediate",
     requirements: {
       education: { min: 2 },
-      workExperience: { min: 3 },
+      workExperience: { min: 2 },
       fieldOfWork: { min: 2 },
       citizenship: { min: 0 },
     },
-    position: { x: 50, y: 80 },
-    color: "from-red-400 to-red-600",
-    badge: "bg-red-100 text-red-700",
-    relatedVisas: [],
+    previousVisas: ["f1", "h1b", "start"],
+    color: "from-yellow-400 to-orange-500",
+    badge: "bg-yellow-100 text-yellow-700",
   },
   {
     id: "e2",
@@ -169,14 +224,53 @@ export const visaPaths = [
     fullDescription:
       "For investors and treaty traders from designated countries making significant U.S. investments.",
     category: "Investment",
+    tier: "intermediate",
     requirements: {
-      investment: { min: 1 }, // Requires investment capital
-      citizenship: { min: 1 }, // Must be from eligible country
+      investment: { min: 1 },
+      citizenship: { min: 1 },
     },
-    position: { x: 25, y: 70 },
+    previousVisas: ["start"],
     color: "from-pink-400 to-pink-600",
     badge: "bg-pink-100 text-pink-700",
-    relatedVisas: ["l1"],
+  },
+
+  // ========== ADVANCED VISAS (Long-term, green cards) ==========
+  {
+    id: "eb1",
+    name: "EB-1 Green Card",
+    emoji: "🏆",
+    description: "Employment-based green card",
+    fullDescription:
+      "Permanent residency for individuals with extraordinary ability or advanced degree holders.",
+    category: "Permanent",
+    tier: "advanced",
+    requirements: {
+      education: { min: 2 },
+      workExperience: { min: 3 },
+      fieldOfWork: { min: 2 },
+      citizenship: { min: 0 },
+    },
+    previousVisas: ["h1b", "l1", "o1"],
+    color: "from-red-400 to-red-600",
+    badge: "bg-red-100 text-red-700",
+  },
+  {
+    id: "eb2",
+    name: "EB-2 Advanced Degree",
+    emoji: "📚",
+    description: "Green card for advanced degree holders",
+    fullDescription:
+      "Employment-based green card for professionals with advanced degrees.",
+    category: "Permanent",
+    tier: "advanced",
+    requirements: {
+      education: { min: 3 },
+      workExperience: { min: 2 },
+      citizenship: { min: 0 },
+    },
+    previousVisas: ["h1b", "opt"],
+    color: "from-red-400 to-red-600",
+    badge: "bg-red-100 text-red-700",
   },
 ];
 
@@ -255,4 +349,127 @@ export function getVisaState(
   });
   
   return meetsAllRequirementsWell ? "recommended" : "available";
+}
+
+// ============================================================================
+// JOURNEY-BASED MAP FUNCTIONS
+// ============================================================================
+// These functions determine the starting point and branching paths
+// PLACEHOLDER: Can be replaced with backend logic
+
+/**
+ * Determines the starting visa/node based on user's current visa status
+ * 
+ * CUSTOMIZE: Replace with backend call to get user's actual current visa
+ * or modify logic based on your business rules
+ */
+export function getStartingVisa(user: typeof userProfile): string {
+  // PLACEHOLDER LOGIC:
+  // If user has currentVisa set, return that
+  // Otherwise return "start" (no visa)
+  if (user.currentVisa) {
+    return user.currentVisa;
+  }
+  return "start";
+}
+
+/**
+ * Gets all visa nodes that should appear in the journey map
+ * Filters based on:
+ *   1. Starting visa
+ *   2. User's skill tree
+ *   3. Reachability from starting visa
+ * 
+ * CUSTOMIZE: Adjust filtering logic based on your requirements
+ */
+export function getEligiblePaths(
+  startingVisaId: string,
+  user: typeof userProfile
+): (typeof visaPaths)[0][] {
+  /**
+   * Strategy:
+   * 1. Find the starting visa
+   * 2. Include all visas reachable from it (via previousVisas)
+   * 3. Check skill availability
+   * 4. Build a connected graph for display
+   */
+
+  const result: Array<(typeof visaPaths)[0]> = [];
+  const visited = new Set<string>();
+
+  function traverse(visaId: string) {
+    if (visited.has(visaId)) return;
+    visited.add(visaId);
+
+    const visa = visaPaths.find((v) => v.id === visaId);
+    if (!visa) return;
+
+    result.push(visa);
+
+    // Find all visas that list this visa as previousVisa
+    visaPaths.forEach((v) => {
+      if (v.previousVisas.includes(visaId) && !visited.has(v.id)) {
+        traverse(v.id);
+      }
+    });
+  }
+
+  // Start traversal from the starting visa
+  traverse(startingVisaId);
+
+  return result;
+}
+
+/**
+ * Calculates tree layout positions for nodes
+ * Arranges nodes hierarchically:
+ * - Left to right flow (x-axis)
+ * - Grouped by tier (entry, intermediate, advanced)
+ * 
+ * Returns object with visa id -> position mapping
+ */
+export function calculateTreePositions(
+  visasToShow: (typeof visaPaths)[0][]
+): Record<string, { x: number; y: number }> {
+  /**
+   * Layout strategy:
+   * - Group visas by tier
+   * - Position x based on tier: start=0, entry=20%, intermediate=50%, advanced=80%
+   * - Position y based on count within tier (distribute vertically)
+   */
+
+  const positions: Record<string, { x: number; y: number }> = {};
+
+  // Group by tier
+  const byTier = {
+    start: visasToShow.filter((v) => v.tier === "start"),
+    entry: visasToShow.filter((v) => v.tier === "entry"),
+    intermediate: visasToShow.filter((v) => v.tier === "intermediate"),
+    advanced: visasToShow.filter((v) => v.tier === "advanced"),
+  };
+
+  // X positions for each tier (percentage)
+  const tierXPositions = {
+    start: 10,
+    entry: 25,
+    intermediate: 50,
+    advanced: 75,
+  };
+
+  // Assign positions with vertical distribution
+  let totalNodes = visasToShow.length;
+
+  Object.entries(byTier).forEach(([tier, visas]) => {
+    const x = tierXPositions[tier as keyof typeof tierXPositions];
+
+    // Distribute y positions evenly across the canvas height
+    visas.forEach((visa, index) => {
+      const ySpacing = 80 / Math.max(visas.length, 1); // Spread across 80% of height
+      const y = 10 + index * ySpacing; // Start at 10%, distribute downward
+
+      positions[visa.id] = { x, y };
+    });
+  });
+
+  return positions;
 }

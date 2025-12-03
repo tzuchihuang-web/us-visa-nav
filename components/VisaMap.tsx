@@ -1,15 +1,28 @@
 /**
- * VISA MAP COMPONENT (Right main area)
+ * VISA MAP COMPONENT - JOURNEY-BASED LAYOUT
  * 
- * Displays an abstract conceptual map with visa nodes and paths.
- * Nodes show locked/unlocked/recommended states based on user's skill tree.
- * Visual design inspired by isometric dashboards and data visualizations.
+ * Displays visa paths as a journey starting from user's current visa
+ * or a "Start" node if no visa.
+ * 
+ * Layout:
+ * - Left to right flow (time progression)
+ * - Hierarchical levels: Start -> Entry -> Intermediate -> Advanced
+ * - Lines connecting related visa paths
+ * - Interactive hover cards
  */
 
 "use client";
 
-import { useState } from "react";
-import { visaPaths, mapConfig, userProfile, getVisaState } from "@/lib/mapData";
+import { useState, useMemo } from "react";
+import {
+  visaPaths,
+  userProfile,
+  getStartingVisa,
+  getEligiblePaths,
+  calculateTreePositions,
+  getVisaState,
+  mapConfig,
+} from "@/lib/mapData";
 
 interface VisaNode {
   id: string;
@@ -18,26 +31,27 @@ interface VisaNode {
   description: string;
   fullDescription: string;
   category: string;
-  position: { x: number; y: number };
+  tier: string;
+  requirements: Record<string, any>;
+  previousVisas: string[];
   color: string;
   badge: string;
-  relatedVisas: string[];
 }
 
-interface HoveredNode {
-  id: string;
-  position: { x: number; y: number };
+interface Position {
+  x: number;
+  y: number;
 }
 
 function AbstractMapBackground() {
   /**
-   * Renders the abstract map background with grid lines and subtle design elements
-   * CUSTOMIZE: Change grid spacing, colors, and opacity in mapConfig (lib/mapData.ts)
+   * Renders the abstract map background with grid lines
+   * CUSTOMIZE: Change in mapConfig (lib/mapData.ts)
    */
 
   const gridLines = [];
-  const canvasWidth = 1400; // Approximate canvas width
-  const canvasHeight = 800; // Approximate canvas height
+  const canvasWidth = 1400;
+  const canvasHeight = 800;
 
   // Generate vertical grid lines
   for (let x = 0; x < canvasWidth; x += mapConfig.gridSpacing) {
@@ -80,13 +94,12 @@ function AbstractMapBackground() {
       {/* Grid */}
       {gridLines}
 
-      {/* Decorative corner circles (optional visual elements) */}
-      <circle cx="5%" cy="5%" r="80" fill="url(#gradientCorner)" opacity="0.1" />
-      <circle cx="95%" cy="95%" r="100" fill="url(#gradientCorner)" opacity="0.1" />
+      {/* Decorative left side accent */}
+      <circle cx="5%" cy="50%" r="120" fill="url(#gradientLeft)" opacity="0.08" />
 
       {/* Gradient definitions */}
       <defs>
-        <radialGradient id="gradientCorner">
+        <radialGradient id="gradientLeft">
           <stop offset="0%" stopColor="#3b82f6" />
           <stop offset="100%" stopColor="#1e40af" />
         </radialGradient>
@@ -95,75 +108,176 @@ function AbstractMapBackground() {
   );
 }
 
+function PathLines({
+  visasToShow,
+  positions,
+  hoveredNodeId,
+}: {
+  visasToShow: VisaNode[];
+  positions: Record<string, Position>;
+  hoveredNodeId: string | null;
+}) {
+  /**
+   * Draws lines connecting visa paths
+   * Lines show the journey flow from previous visas to next visas
+   */
+
+  const viewBoxWidth = 1400;
+  const viewBoxHeight = 800;
+
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <defs>
+        {/* Curved path definitions for smooth connections */}
+        <style>{`
+          .visa-path-line {
+            fill: none;
+            stroke: ${mapConfig.pathColor};
+            stroke-width: ${mapConfig.pathWidth};
+            opacity: ${mapConfig.pathOpacity};
+            transition: opacity 300ms ease;
+            stroke-dasharray: 5,5;
+          }
+          
+          .visa-path-line.highlighted {
+            opacity: ${mapConfig.pathHoverOpacity};
+            stroke: #3b82f6;
+            stroke-width: 3;
+          }
+        `}</style>
+      </defs>
+
+      {/* Draw connection lines */}
+      {visasToShow.map((visa) => {
+        if (!visa.previousVisas.length) return null;
+
+        return visa.previousVisas.map((prevVisaId) => {
+          const prevVisa = visasToShow.find((v) => v.id === prevVisaId);
+          if (!prevVisa || !positions[prevVisaId] || !positions[visa.id]) return null;
+
+          const fromPos = positions[prevVisaId];
+          const toPos = positions[visa.id];
+
+          const x1 = (fromPos.x / 100) * viewBoxWidth;
+          const y1 = (fromPos.y / 100) * viewBoxHeight;
+          const x2 = (toPos.x / 100) * viewBoxWidth;
+          const y2 = (toPos.y / 100) * viewBoxHeight;
+
+          const isHighlighted =
+            hoveredNodeId === visa.id || hoveredNodeId === prevVisaId;
+
+          // Create curved path (quadratic Bezier)
+          const midX = (x1 + x2) / 2;
+          const controlX = midX + (x2 - x1) * 0.3;
+          const pathData = `M ${x1} ${y1} Q ${controlX} ${(y1 + y2) / 2} ${x2} ${y2}`;
+
+          return (
+            <path
+              key={`path-${prevVisaId}-${visa.id}`}
+              d={pathData}
+              className={`visa-path-line ${isHighlighted ? "highlighted" : ""}`}
+            />
+          );
+        });
+      })}
+    </svg>
+  );
+}
+
 function VisaNodeElement({
   visa,
   state,
+  position,
   isHovered,
+  isStarting,
   onHover,
   onHoverEnd,
   onClick,
 }: {
   visa: VisaNode;
   state: string;
+  position: Position;
   isHovered: boolean;
+  isStarting: boolean;
   onHover: () => void;
   onHoverEnd: () => void;
   onClick: () => void;
 }) {
   /**
-   * Individual visa node on the map
-   * CUSTOMIZE:
-   * - nodeRadius, nodeHoverScale in mapConfig for size
-   * - Colors via visa.color and visa.badge props
-   * - Status badge colors via mapConfig.statusColors
+   * Individual visa node on the journey map
+   * Starting node is highlighted with larger size and glow
    */
 
   const isLocked = state === "locked";
-  const isRecommended = state === "recommended";
+  const statusColor =
+    mapConfig.statusColors[state as keyof typeof mapConfig.statusColors];
 
-  // Calculate position as percentage for responsive design
-  const x = `${visa.position.x}%`;
-  const y = `${visa.position.y}%`;
-
-  // Get status color from config
-  const statusColor = mapConfig.statusColors[state as keyof typeof mapConfig.statusColors];
+  // Calculate size based on whether it's the starting node
+  const nodeSize = isStarting ? 70 : mapConfig.nodeRadius;
 
   return (
     <div
-      className="absolute transition-all duration-300 cursor-pointer"
+      className="absolute transition-all duration-300"
       style={{
-        left: x,
-        top: y,
+        left: `${position.x}%`,
+        top: `${position.y}%`,
         transform: "translate(-50%, -50%)",
         zIndex: isHovered ? 50 : 10,
+        cursor: isLocked ? "not-allowed" : "pointer",
       }}
       onMouseEnter={onHover}
       onMouseLeave={onHoverEnd}
       onClick={onClick}
     >
+      {/* Glow effect for starting node */}
+      {isStarting && (
+        <div
+          className="absolute inset-0 rounded-full animate-pulse"
+          style={{
+            width: `${nodeSize + 20}px`,
+            height: `${nodeSize + 20}px`,
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            backgroundColor: "rgba(59, 130, 246, 0.2)",
+            zIndex: -1,
+          }}
+        />
+      )}
+
       {/* Main node circle */}
       <div
-        className="flex items-center justify-center rounded-full transition-all duration-300 shadow-md hover:shadow-xl"
+        className="flex items-center justify-center rounded-full transition-all duration-300 shadow-lg hover:shadow-xl"
         style={{
-          width: `${mapConfig.nodeRadius}px`,
-          height: `${mapConfig.nodeRadius}px`,
+          width: `${nodeSize}px`,
+          height: `${nodeSize}px`,
           opacity: isLocked ? mapConfig.nodeLockedOpacity : mapConfig.nodeUnlockedOpacity,
           transform: isHovered ? `scale(${mapConfig.nodeHoverScale})` : "scale(1)",
-          backgroundColor: isLocked
-            ? "#f3f4f6" // Gray for locked
-            : visa.color.startsWith("from-")
-              ? "#ffffff" // Will use border + shadow for gradient effect
-              : "white",
-          border: isLocked ? "2px dashed #d1d5db" : "2px solid #e5e7eb",
-          background: isLocked
-            ? "#f3f4f6"
-            : `linear-gradient(135deg, var(--tw-gradient-stops))`,
-          "--tw-gradient-from": visa.color.split(" ")[1],
-          "--tw-gradient-to": visa.color.split(" ")[3],
-        } as React.CSSProperties}
+          backgroundColor: isLocked ? "#f3f4f6" : "#ffffff",
+          border: isStarting
+            ? "3px solid #3b82f6"
+            : isLocked
+              ? "2px dashed #d1d5db"
+              : "2px solid #e5e7eb",
+          boxShadow:
+            isStarting && !isLocked
+              ? "0 0 20px rgba(59, 130, 246, 0.3)"
+              : "none",
+        }}
       >
         {/* Emoji */}
-        <span className="text-3xl drop-shadow-md">{visa.emoji}</span>
+        <span
+          className="drop-shadow-md"
+          style={{
+            fontSize: `${nodeSize * 0.5}px`,
+          }}
+        >
+          {visa.emoji}
+        </span>
       </div>
 
       {/* Status badge */}
@@ -174,12 +288,18 @@ function VisaNodeElement({
           color: statusColor.text,
         }}
       >
-        {isLocked ? "🔒" : isRecommended ? "⭐" : "✓"}
+        {isLocked ? "🔒" : isStarting ? "🌟" : state === "recommended" ? "⭐" : "✓"}
       </div>
 
       {/* Lock overlay (if locked) */}
       {isLocked && (
-        <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/30">
+        <div
+          className="absolute inset-0 flex items-center justify-center rounded-full bg-white/30"
+          style={{
+            width: `${nodeSize}px`,
+            height: `${nodeSize}px`,
+          }}
+        >
           <span className="text-xl">🔒</span>
         </div>
       )}
@@ -187,7 +307,7 @@ function VisaNodeElement({
       {/* Hover tooltip/card */}
       {isHovered && (
         <div
-          className="absolute left-20 top-1/2 -translate-y-1/2 w-64 bg-white rounded-xl shadow-xl p-4 border border-gray-200 z-50"
+          className="absolute left-20 top-1/2 -translate-y-1/2 w-72 bg-white rounded-xl shadow-2xl p-5 border border-gray-200 z-50"
           style={{
             animation: "slideIn 150ms ease-out",
           }}
@@ -195,20 +315,26 @@ function VisaNodeElement({
           {/* Visa name */}
           <h3 className="font-bold text-lg text-gray-900 mb-1">{visa.name}</h3>
 
-          {/* Category badge */}
-          <div className="inline-block mb-3">
+          {/* Category and tier badges */}
+          <div className="flex gap-2 mb-3">
             <span className={`text-xs font-semibold px-2 py-1 rounded-full ${visa.badge}`}>
               {visa.category}
+            </span>
+            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+              {visa.tier}
             </span>
           </div>
 
           {/* Description */}
-          <p className="text-sm text-gray-600 mb-3">{visa.description}</p>
+          <p className="text-sm text-gray-600 mb-3">{visa.fullDescription}</p>
 
           {/* Status indicator */}
           <div className="mb-4 pb-4 border-t border-gray-200">
             <p className="text-xs font-semibold text-gray-700">
-              Status: <span style={{ color: statusColor.text }}>{state.toUpperCase()}</span>
+              Status:{" "}
+              <span style={{ color: statusColor.text }}>
+                {state === "locked" ? "🔒 Locked" : state === "recommended" ? "⭐ Recommended" : "✓ Available"}
+              </span>
             </p>
           </div>
 
@@ -222,7 +348,7 @@ function VisaNodeElement({
                 : "bg-blue-600 text-white hover:bg-blue-700"
             }`}
           >
-            {isLocked ? "Unlock Skills to Access" : "Learn More"}
+            {isLocked ? "Unlock Skills to Access" : "Explore Path"}
           </button>
         </div>
       )}
@@ -244,92 +370,54 @@ function VisaNodeElement({
   );
 }
 
-function PathLines({ hoveredNodeId }: { hoveredNodeId: string | null }) {
-  /**
-   * Draws lines connecting related visa paths
-   * CUSTOMIZE: Change pathColor, pathOpacity, pathWidth in mapConfig
-   * 
-   * Note: Using SVG viewBox for responsive path drawing without document API
-   */
-
-  const viewBoxWidth = 1400;
-  const viewBoxHeight = 800;
-
-  return (
-    <svg 
-      className="absolute inset-0 w-full h-full pointer-events-none" 
-      viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-      preserveAspectRatio="xMidYMid slice"
-    >
-      {visaPaths.map((visa) => {
-        return visa.relatedVisas.map((relatedId) => {
-          const related = visaPaths.find((v) => v.id === relatedId);
-          if (!related) return null;
-
-          const isHighlighted =
-            hoveredNodeId === visa.id || hoveredNodeId === relatedId;
-
-          // Convert percentage positions to viewBox coordinates
-          const x1 = (visa.position.x / 100) * viewBoxWidth;
-          const y1 = (visa.position.y / 100) * viewBoxHeight;
-          const x2 = (related.position.x / 100) * viewBoxWidth;
-          const y2 = (related.position.y / 100) * viewBoxHeight;
-
-          return (
-            <line
-              key={`path-${visa.id}-${relatedId}`}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={mapConfig.pathColor}
-              strokeWidth={mapConfig.pathWidth}
-              opacity={isHighlighted ? mapConfig.pathHoverOpacity : mapConfig.pathOpacity}
-              className="transition-all duration-300"
-            />
-          );
-        });
-      })}
-    </svg>
-  );
-}
-
 export function VisaMap() {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const [selectedVisa, setSelectedVisa] = useState<string | null>(null);
 
-  // CUSTOMIZE: Visa states are determined by getVisaState() function
-  // Edit logic in lib/mapData.ts to change how states are calculated
+  // CUSTOMIZE: Determine starting visa and eligible paths
+  const startingVisaId = useMemo(() => getStartingVisa(userProfile), []);
+  const visasToShow = useMemo(
+    () => getEligiblePaths(startingVisaId, userProfile),
+    [startingVisaId]
+  );
+
+  // Calculate tree positions for all visible visas
+  const positions = useMemo(() => calculateTreePositions(visasToShow), [visasToShow]);
 
   return (
-    <div
-      className="flex-1 relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50"
-      data-map-container
-    >
+    <div className="flex-1 relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Background grid and decorations */}
       <AbstractMapBackground />
 
       {/* Path lines connecting visa nodes */}
-      <PathLines hoveredNodeId={hoveredNodeId} />
+      <PathLines
+        visasToShow={visasToShow}
+        positions={positions}
+        hoveredNodeId={hoveredNodeId}
+      />
 
       {/* Visa nodes */}
       <div className="relative w-full h-full">
-        {visaPaths.map((visa) => {
+        {visasToShow.map((visa) => {
           const state = getVisaState(visa, userProfile.skills);
+          const isStarting = visa.id === startingVisaId;
+          const pos = positions[visa.id];
+
+          if (!pos) return null;
 
           return (
             <VisaNodeElement
               key={visa.id}
               visa={visa}
               state={state}
+              position={pos}
               isHovered={hoveredNodeId === visa.id}
+              isStarting={isStarting}
               onHover={() => setHoveredNodeId(visa.id)}
               onHoverEnd={() => setHoveredNodeId(null)}
               onClick={() => {
                 if (state !== "locked") {
-                  setSelectedVisa(visa.id);
+                  console.log(`Exploring visa: ${visa.name}`);
                   // CUSTOMIZE: Add navigation or modal logic here
-                  console.log(`Selected visa: ${visa.name}`);
                 }
               }}
             />
@@ -337,51 +425,57 @@ export function VisaMap() {
         })}
       </div>
 
-      {/* Info panel (bottom right) */}
+      {/* Journey info panel */}
       <div className="absolute bottom-8 right-8 max-w-sm bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-        <h2 className="font-bold text-lg text-gray-900 mb-2">Abstract Visa Map</h2>
+        <h2 className="font-bold text-lg text-gray-900 mb-2">Your Visa Journey</h2>
         <p className="text-sm text-gray-600 mb-4">
-          Explore visa options based on your skills and qualifications. 
-          Locked nodes require additional skills to unlock.
+          {startingVisaId === "start"
+            ? "You're starting fresh! Explore various visa options to begin your U.S. journey."
+            : `You're currently on the ${visaPaths.find((v) => v.id === startingVisaId)?.name} path. Explore next steps in your journey.`}
         </p>
         <div className="space-y-2 text-xs text-gray-600">
           <div className="flex items-center gap-2">
-            <span className="text-lg">🔒</span>
-            <span>Locked - Requires more skills</span>
+            <span className="text-lg">🌟</span>
+            <span>Starting point - Your current visa</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⭐</span>
+            <span>Recommended - Great next step</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-lg">✓</span>
             <span>Available - You qualify</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-lg">⭐</span>
-            <span>Recommended - Great fit</span>
+            <span className="text-lg">🔒</span>
+            <span>Locked - Requires more skills</span>
           </div>
         </div>
       </div>
 
       {/* CUSTOMIZATION GUIDE */}
       {/* 
-        To customize the map:
+        To customize the journey map:
         
-        1. CHANGE VISA POSITIONS:
-           - Edit position.x and position.y in visaPaths (lib/mapData.ts)
-           - Values are percentages (0-100) of container width/height
+        1. CHANGE STARTING VISA:
+           - Edit userProfile.currentVisa in lib/mapData.ts
+           - Set to null for "Start" node, or visa ID like "f1"
         
-        2. CHANGE MAP STYLE:
-           - Grid colors, spacing: mapConfig in lib/mapData.ts
-           - Node colors, sizes: mapConfig constants
-           - Background: AbstractMapBackground component
+        2. ADD NEW VISA PATH:
+           - Add to visaPaths array in lib/mapData.ts
+           - Set tier, requirements, and previousVisas
         
-        3. CHANGE VISA REQUIREMENTS:
-           - Edit requirements object for each visa in visaPaths
-           - Modify getVisaState() function logic
+        3. CHANGE TREE LAYOUT:
+           - Edit calculateTreePositions() in lib/mapData.ts
+           - Adjust x positions for tiers and y distribution
         
-        4. ADD NEW VISA:
-           - Add new object to visaPaths array with id, name, position, etc.
+        4. MODIFY ELIGIBLE PATHS:
+           - Edit getEligiblePaths() logic in lib/mapData.ts
+           - Add filters for skill requirements
         
-        5. CUSTOMIZE CONNECTIONS:
-           - Edit relatedVisas array in each visa object to show path connections
+        5. CHANGE VISUAL STYLE:
+           - mapConfig in lib/mapData.ts (colors, opacity, sizes)
+           - Tier colors: modify visa.color and visa.badge
       */}
     </div>
   );
