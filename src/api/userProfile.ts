@@ -125,6 +125,8 @@ export async function loadUserProfileFromSupabase(
  * Called from: Left panel components when user edits qualifications
  * 
  * Note: Debouncing should be handled by the caller to avoid excessive writes
+ * 
+ * LOGGING: Logs all data being sent and any errors returned
  */
 export async function saveUserProfileToSupabase(
   userId: string,
@@ -137,17 +139,23 @@ export async function saveUserProfileToSupabase(
 
   try {
     const updates = toSupabaseProfile(profile);
+    console.info('[SaveProfile] Saving profile for userId:', userId);
+    console.info('[SaveProfile] Data being sent to Supabase:', updates);
+    
     const result = await updateProfileInSupabase(userId, updates as any);
 
     if (result) {
-      console.info(`[Supabase] Profile saved for ${userId}`);
+      console.info(`[SaveProfile] Profile saved successfully for ${userId}`, result);
       return true;
     } else {
-      console.warn(`[Supabase] Profile update returned null for ${userId}`);
+      console.warn(`[SaveProfile] Profile update returned null for ${userId}`);
       return false;
     }
   } catch (error) {
-    console.error("[Supabase] Error saving user profile:", error);
+    console.error("[SaveProfile] Error saving user profile:", error);
+    if (error instanceof Error) {
+      console.error("[SaveProfile] Error details:", error.message);
+    }
     return false;
   }
 }

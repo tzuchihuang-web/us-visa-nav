@@ -68,18 +68,30 @@ export function QualificationsPanel({
   const handleSaveChanges = async () => {
     try {
       setError(null);
+      console.info('[QualificationsPanel] Saving profile changes:', localChanges);
+      
       // Apply local changes to profile
-      await onUpdateProfile(localChanges);
+      const updateSuccess = await onUpdateProfile(localChanges);
+      if (!updateSuccess) {
+        console.warn('[QualificationsPanel] Failed to update profile in local state');
+        setError('Failed to update profile');
+        return;
+      }
+      
       // Save to Supabase
+      console.info('[QualificationsPanel] Persisting to Supabase...');
       const success = await onSaveProfile();
       if (success) {
+        console.info('[QualificationsPanel] Profile saved to Supabase successfully');
         setSaveSuccess(true);
         setLocalChanges({}); // Clear local changes after successful save
       } else {
-        setError('Failed to save profile changes');
+        console.error('[QualificationsPanel] Failed to save profile to Supabase');
+        setError('Failed to save profile to Supabase');
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save';
+      console.error('[QualificationsPanel] Error saving profile:', message);
       setError(message);
     }
   };

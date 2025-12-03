@@ -42,6 +42,18 @@ export default function Home() {
     saveProfile,
   } = useVisaNavigatorProfile(user?.id);
 
+  // Log profile state changes for debugging
+  React.useEffect(() => {
+    if (visaProfile) {
+      console.info('[Home] Profile loaded successfully:', {
+        userId: visaProfile.id,
+        currentVisa: visaProfile.currentVisa,
+        educationLevel: visaProfile.educationLevel,
+        yearsOfExperience: visaProfile.yearsOfExperience,
+      });
+    }
+  }, [visaProfile]);
+
   // FIRST-TIME USER CHECK: Verify onboarding completion via Supabase
   useEffect(() => {
     if (!authLoading && !user) {

@@ -59,7 +59,12 @@ export default function OnboardingPage() {
     if (isCompleted) {
       // Save onboardingData to Supabase
       if (user) {
+        console.info('[Onboarding] Completing onboarding and mapping to UserProfile:', onboardingData);
+        
+        // IMPORTANT: Save onboarding data which also updates user_profiles table
+        // This maps onboarding answers to UserProfile fields (currentVisa, educationLevel, etc.)
         saveOnboardingData(user.id, onboardingData);
+        
         // Also keep in localStorage as backup
         localStorage.setItem(
           `onboarding_${user.id}`,
@@ -68,6 +73,7 @@ export default function OnboardingPage() {
       }
       // Redirect to home after a short delay to ensure data is saved
       setTimeout(() => {
+        console.info('[Onboarding] Redirecting to home page after onboarding completion');
         router.push('/');
       }, 500);
     }

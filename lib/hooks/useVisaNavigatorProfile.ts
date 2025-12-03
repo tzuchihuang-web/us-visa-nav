@@ -65,6 +65,7 @@ export function useVisaNavigatorProfile(
   useEffect(() => {
     const loadProfile = async () => {
       if (!userId) {
+        console.warn('[UseVisaNavigatorProfile] No userId provided, skipping load');
         setLoading(false);
         return;
       }
@@ -73,23 +74,23 @@ export function useVisaNavigatorProfile(
       setError(null);
 
       try {
-        console.info(`[Profile Hook] Loading profile for user ${userId}`);
+        console.info(`[UseVisaNavigatorProfile] Loading profile from Supabase for user ${userId}`);
 
         // Try to load from Supabase
         const loadedProfile = await loadUserProfileFromSupabase(userId);
 
         if (loadedProfile) {
-          console.info('[Profile Hook] Profile loaded from Supabase');
+          console.info('[UseVisaNavigatorProfile] ✓ Profile loaded from Supabase:', loadedProfile);
           setProfile(loadedProfile);
         } else {
           // Initialize with defaults if not found
-          console.info('[Profile Hook] No profile found, using defaults');
+          console.info('[UseVisaNavigatorProfile] No profile found in Supabase, using defaults');
           const defaultProfile = createDefaultUserProfile(userId);
           setProfile(defaultProfile);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        console.error('[Profile Hook] Error loading profile:', message);
+        console.error('[UseVisaNavigatorProfile] Error loading profile:', message);
         setError(message);
         // Fall back to default profile even on error
         setProfile(createDefaultUserProfile(userId));
@@ -133,33 +134,36 @@ export function useVisaNavigatorProfile(
   // ========================================================================
   const saveProfile = useCallback(async (): Promise<boolean> => {
     if (!profile || !userId) {
-      console.warn('[Profile Hook] Cannot save: missing profile or userId');
+      console.warn('[UseVisaNavigatorProfile] Cannot save: missing profile or userId');
       return false;
     }
 
     if (!pendingChanges) {
-      console.info('[Profile Hook] No changes to save');
+      console.info('[UseVisaNavigatorProfile] No pending changes to save');
       return true;
     }
 
     setIsSaving(true);
     try {
-      console.info('[Profile Hook] Saving profile to Supabase...');
+      console.info('[UseVisaNavigatorProfile] Starting profile save to Supabase...');
+      console.info('[UseVisaNavigatorProfile] Profile data to save:', profile);
+      
       const success = await saveUserProfileToSupabase(userId, profile);
 
       if (success) {
         setPendingChanges(false);
         setError(null);
-        console.info('[Profile Hook] Profile saved successfully');
+        console.info('[UseVisaNavigatorProfile] ✓ Profile saved successfully to Supabase');
         return true;
       } else {
-        console.error('[Profile Hook] Save returned false');
-        setError('Failed to save profile');
+        const msg = 'Failed to save profile to Supabase';
+        console.error('[UseVisaNavigatorProfile] ' + msg);
+        setError(msg);
         return false;
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[Profile Hook] Error saving profile:', message);
+      console.error('[UseVisaNavigatorProfile] Error saving profile:', message);
       setError(message);
       return false;
     } finally {

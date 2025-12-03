@@ -413,8 +413,13 @@ export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
 /**
  * Save onboarding data to user profile
  * 
- * Attempts to save to Supabase first.
- * If the column doesn't exist yet, stores in localStorage as fallback.
+ * IMPORTANT: Maps onboarding questionnaire answers to UserProfile fields:
+ * - onboardingData.currentVisa → user_profiles.current_visa
+ * - onboardingData.educationLevel → user_profiles.education_level
+ * - onboardingData.yearsOfExperience → user_profiles.years_of_experience
+ * 
+ * This ensures the left panel shows onboarding answers after completion.
+ * Also stores full onboarding_data JSON for reference.
  */
 export async function saveOnboardingData(
   userId: string,
@@ -425,6 +430,7 @@ export async function saveOnboardingData(
   // Always save to localStorage as backup
   try {
     localStorage.setItem(`onboarding_${userId}`, JSON.stringify(onboardingData));
+    console.info('[Supabase] Saved onboarding data to localStorage');
   } catch (err) {
     console.warn("Could not save to localStorage:", err);
   }
@@ -435,23 +441,54 @@ export async function saveOnboardingData(
   }
 
   try {
+    // MAP ONBOARDING DATA TO USER PROFILE FIELDS
+    // This is the key step that connects onboarding answers to the user profile
+    const updates: Record<string, any> = {
+      onboarding_data: onboardingData,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Map onboarding visa status to profile
+    // If user has a current visa, set it in user_profiles.current_visa
+    if (onboardingData.currentVisaStatus === 'has_visa' && onboardingData.currentVisa) {
+      // Normalize visa name to lowercase for consistency
+      updates.current_visa = onboardingData.currentVisa.toLowerCase();
+      console.info(`[Supabase] Mapped onboarding currentVisa to profile: ${onboardingData.currentVisa}`);
+    } else {
+      // User has no current visa
+      updates.current_visa = null;
+      console.info('[Supabase] User has no current visa (onboarding)');
+    }
+
+    // Map education level
+    if (onboardingData.educationLevel) {
+      updates.education_level = onboardingData.educationLevel;
+      console.info(`[Supabase] Mapped education level: ${onboardingData.educationLevel}`);
+    }
+
+    // Map years of experience
+    if (onboardingData.yearsOfExperience !== undefined) {
+      updates.years_of_experience = onboardingData.yearsOfExperience;
+      console.info(`[Supabase] Mapped years of experience: ${onboardingData.yearsOfExperience}`);
+    }
+
+    console.info('[Supabase] Saving onboarding data to user_profiles with mapped fields:', updates);
+
     const { error } = await client
       .from("user_profiles")
-      .update({
-        onboarding_data: onboardingData,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq("id", userId);
 
     if (error) {
-      console.warn("Could not save onboarding data to Supabase:", error.message);
+      console.error("Error saving onboarding data to Supabase:", error.message, error);
       console.warn("Falling back to localStorage only. Run SUPABASE_ADD_ONBOARDING.ts migration if needed.");
       return true; // Still return true since localStorage worked
     }
 
+    console.info('[Supabase] Successfully saved onboarding data to user_profiles');
     return true;
   } catch (err) {
-    console.warn("Error saving onboarding data:", err);
+    console.error("Error saving onboarding data:", err);
     return true; // Still return true since localStorage worked
   }
 }

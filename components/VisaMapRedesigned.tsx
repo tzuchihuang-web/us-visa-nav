@@ -93,19 +93,28 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
       advanced: [],
     };
 
+    console.info('[VisaMapRedesigned] Building visa tier structure. Current visa from profile:', userProfile.currentVisa);
+
     // Level 0: Current visa or START node
     if (userProfile.currentVisa) {
       // User has visa: show that visa as starting point
       // But only if it's a work/long-term visa (not tourist)
-      const currentVisa = VISA_KNOWLEDGE_BASE[userProfile.currentVisa.toLowerCase()];
+      const visaIdLower = userProfile.currentVisa.toLowerCase();
+      const currentVisa = VISA_KNOWLEDGE_BASE[visaIdLower];
+      
+      console.info('[VisaMapRedesigned] User has currentVisa:', userProfile.currentVisa);
+      console.info('[VisaMapRedesigned] Looking up visa in knowledge base:', visaIdLower);
+      
       if (currentVisa && INCLUDED_CATEGORIES.includes(currentVisa.category)) {
-        tiers.current = [userProfile.currentVisa.toLowerCase()];
+        console.info('[VisaMapRedesigned] ✓ Current visa is eligible (category:', currentVisa.category, '), showing as Level 0');
+        tiers.current = [visaIdLower];
       } else {
-        // If current visa is tourist/family/etc, show START instead
+        console.warn('[VisaMapRedesigned] Current visa category not eligible or not found, showing START instead');
         tiers.current = ['start'];
       }
     } else {
       // User has no visa: show START node
+      console.info('[VisaMapRedesigned] No currentVisa set, showing START node at Level 0');
       tiers.current = ['start'];
     }
 
@@ -121,6 +130,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
 
       // Skip if this is the current visa (already at Level 0)
       if (visaId === userProfile.currentVisa?.toLowerCase()) {
+        console.info('[VisaMapRedesigned] Skipping visa', visaId, '(already showing at Level 0 as current visa)');
         return;
       }
 
@@ -140,6 +150,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
       }
     });
 
+    console.info('[VisaMapRedesigned] Final tier structure:', tiers);
     return tiers;
   }, [userProfile.currentVisa]);
 
