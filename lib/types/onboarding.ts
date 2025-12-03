@@ -10,6 +10,29 @@ export type CurrentVisaType = 'F-1' | 'J-1' | 'B-1/B-2' | 'H-1B' | 'O-1' | 'L-1'
 export type ImmigrationGoal = 'study' | 'work' | 'visit' | 'invest' | 'immigrate_longterm';
 export type EducationLevel = 'high_school' | 'bachelors' | 'masters' | 'phd' | 'other';
 
+/**
+ * SINGLE SOURCE OF TRUTH FOR USER PROFILE
+ * 
+ * This data structure is stored in:
+ * - Supabase: user_profiles.onboarding_data (JSON field)
+ * - App State: UserProfile object (matches visa matching engine)
+ * 
+ * When user completes onboarding:
+ * 1. Save to Supabase via saveOnboardingData()
+ * 2. Load into app state on mount
+ * 3. Pass to matching engine for visa recommendations
+ * 4. Components read from app state for UI updates
+ * 
+ * CITIZENSHIP HANDLING:
+ * - countryOfCitizenship: ISO country code (e.g., 'IN', 'BR', 'CN')
+ * - Internally mapped to restriction category by matching engine
+ * - Users select actual country name via dropdown
+ * 
+ * CURRENT VISA:
+ * - If null: User has no visa, map shows START node
+ * - If string: User has visa, map shows it as Level 0 node
+ * - Updated when user changes their visa status
+ */
 export interface OnboardingData {
   // Step 1: Current visa status
   currentVisaStatus: VisaStatusOption;
@@ -25,6 +48,12 @@ export interface OnboardingData {
   
   // Step 4: Work experience
   yearsOfExperience: number;
+  
+  // Step 4+: Additional qualifications (filled in by SkillTreeEditable)
+  countryOfCitizenship?: string; // ISO country code (e.g., 'IN', 'BR')
+  fieldOfWork?: string; // e.g., 'tech', 'engineering', 'finance'
+  englishProficiency?: number; // 0-5 scale
+  investmentAmount?: number; // in USD
   
   // Metadata
   completedAt: string; // ISO timestamp

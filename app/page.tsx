@@ -11,6 +11,7 @@ import VisaMapRedesigned from "@/components/VisaMapRedesigned";
 import { VisaDetailPanel } from "@/components/VisaDetailPanel";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { visaPaths } from '@/lib/mapData';
+import { UserProfile } from '@/lib/visa-matching-engine';
 
 /**
  * Home Page / Visa Map - PHASE 4 REDESIGN
@@ -40,6 +41,7 @@ export default function Home() {
   const [skills, setSkills] = useState<SkillLevels | null>(null);
   const [selectedVisa, setSelectedVisa] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [visaProfile, setVisaProfile] = useState<UserProfile | null>(null);
   
   // Load user profile with onboarding data
   const userProfile = useUserProfile(user?.id);
@@ -74,6 +76,19 @@ export default function Home() {
         englishProficiency: 3, // TODO: Add to onboarding if needed
         investmentAmount: 0, // TODO: Add to onboarding if needed
       });
+
+      // Build UserProfile for matching engine
+      const newVisaProfile: UserProfile = {
+        educationLevel: userProfile.onboardingData.educationLevel || 'bachelors',
+        yearsOfExperience: userProfile.onboardingData.yearsOfExperience || 0,
+        fieldOfWork: userProfile.onboardingData.fieldOfWork || 'other',
+        countryOfCitizenship: userProfile.onboardingData.countryOfCitizenship || 'US',
+        englishProficiency: userProfile.onboardingData.englishProficiency || 3,
+        investmentAmount: userProfile.onboardingData.investmentAmount || 0,
+        currentVisa: userProfile.onboardingData.currentVisa || null,
+        immigrationGoal: (userProfile.onboardingData.immigrationGoal as any) || 'explore',
+      };
+      setVisaProfile(newVisaProfile);
     }
   }, [userProfile.onboardingData, skills]);
 
@@ -87,7 +102,7 @@ export default function Home() {
     setIsPanelOpen(true);
   };
 
-  if (authLoading || !onboardingChecked || userProfile.loading || !skills) {
+  if (authLoading || !onboardingChecked || userProfile.loading || !skills || !visaProfile) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -115,7 +130,7 @@ export default function Home() {
           {/* Right Main Area: Hierarchical Visa Map */}
           <div className="flex-1 relative">
             <VisaMapRedesigned 
-              skills={skills}
+              userProfile={visaProfile}
               selectedVisa={selectedVisa}
               onVisaSelect={handleVisaSelect}
             />

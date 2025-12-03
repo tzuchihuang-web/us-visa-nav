@@ -1,100 +1,139 @@
 'use client';
 
+/**
+ * VISA MAP REDESIGNED - PHASE 4 WITH KNOWLEDGE BASE INTEGRATION
+ * 
+ * ============================================================================
+ * INTEGRATION WITH NEW VISA KNOWLEDGE BASE & MATCHING ENGINE
+ * ============================================================================
+ * 
+ * This component now:
+ * 1. Uses visa knowledge base (VISA_KNOWLEDGE_BASE) for all visa data
+ * 2. Calls matching engine (getVisaRecommendations) to score visas
+ * 3. Shows user's currentVisa as Level 0 starting point
+ * 4. Hides generic START node if user has current visa
+ * 5. Displays visa eligibility with soft language ("may be eligible")
+ * 
+ * DATA FLOW:
+ * - Input: userProfile (UserProfile object from matching engine)
+ * - userProfile contains: education, experience, field, country, language, investment, currentVisa
+ * - Engine scores all visas and returns: recommended/available/locked status
+ * - Component renders tiers based on scores and currentVisa
+ * 
+ * STARTING POINT LOGIC:
+ * - If userProfile.currentVisa is NULL: Show START node at Level 0
+ * - If userProfile.currentVisa is "F-1": Show F-1 visa as Level 0 with highlight
+ * - Level 0 visa node is larger, glowing, labeled "You are here (Current visa: F-1)"
+ * 
+ * MAP LAYOUT:
+ * - Level 0: Current visa (or START if none) - HIGHLIGHTED
+ * - Level 1: Entry-level visas (F-1, J-1, B-2)
+ * - Level 2: Intermediate visas (OPT, H-1B, L-1B, O-1)
+ * - Level 3: Advanced visas (EB-5, EB-2GC, EB-1A, EB-1C)
+ * 
+ * NODE COLORS:
+ * - Green: Recommended (90%+ requirements match)
+ * - Blue: Available (50%+ requirements match)
+ * - Gray/Dashed: Locked (<50% requirements match)
+ * 
+ * ============================================================================
+ */
+
 import React, { useMemo } from 'react';
-import { visaPaths } from '@/lib/mapData';
-import { SkillLevels } from './SkillTreeEditable';
+import { VISA_KNOWLEDGE_BASE } from '@/lib/visa-knowledge-base';
+import { UserProfile, getVisaRecommendations, getVisasByStatus } from '@/lib/visa-matching-engine';
 
 interface VisaMapRedesignedProps {
-  skills: SkillLevels;
+  /** User profile from matching engine */
+  userProfile: UserProfile;
+  /** Currently selected visa on map */
   selectedVisa?: string | null;
+  /** Callback when user clicks a visa node */
   onVisaSelect: (visaCode: string) => void;
 }
 
 const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
-  skills,
+  userProfile,
   selectedVisa,
   onVisaSelect,
 }) => {
-  // Determine visa eligibility based on skills
-  const visaStatuses = useMemo(() => {
-    const statuses: Record<string, 'recommended' | 'available' | 'locked'> = {};
-    
-    // Map string skills to numeric levels for comparison
-    const educationLevel = typeof skills.education === 'string' 
-      ? (skills.education === 'highschool' ? 1 : skills.education === 'bachelors' ? 2 : 3)
-      : skills.education;
-    
-    const fieldLevel = typeof skills.fieldOfWork === 'string' ? 2 : skills.fieldOfWork;
-    const citizenshipLevel = typeof skills.citizenship === 'string'
-      ? (skills.citizenship === 'restricted' ? 1 : 2)
-      : skills.citizenship;
-    
-    visaPaths.forEach((visa) => {
-      if (visa.id === 'start') {
-        statuses[visa.id] = 'recommended';
-        return;
-      }
+  // ========================================================================
+  // SCORE ALL VISAS USING MATCHING ENGINE
+  // ========================================================================
+  const visaRecommendations = useMemo(
+    () => getVisaRecommendations(userProfile),
+    [userProfile]
+  );
 
-      // Check if requirements are met
-      let passesRequirements = true;
-      
-      if (visa.requirements.education && visa.requirements.education.min > educationLevel) {
-        passesRequirements = false;
-      }
-      if (visa.requirements.workExperience && visa.requirements.workExperience.min > (skills.workExperience || 0)) {
-        passesRequirements = false;
-      }
-      if (visa.requirements.fieldOfWork && visa.requirements.fieldOfWork.min > fieldLevel) {
-        passesRequirements = false;
-      }
-      if (visa.requirements.citizenship && visa.requirements.citizenship.min > citizenshipLevel) {
-        passesRequirements = false;
-      }
-      if (visa.requirements.language && visa.requirements.language.min > (skills.englishProficiency || 0)) {
-        passesRequirements = false;
-      }
+  const recommendedVisas = useMemo(
+    () => getVisasByStatus(visaRecommendations, 'recommended'),
+    [visaRecommendations]
+  );
+  const availableVisas = useMemo(
+    () => getVisasByStatus(visaRecommendations, 'available'),
+    [visaRecommendations]
+  );
 
-      if (passesRequirements) {
-        statuses[visa.id] = 'recommended';
-      } else if (visa.tier === 'entry') {
-        statuses[visa.id] = 'available'; // Entry visas usually available as stepping stones
-      } else {
-        statuses[visa.id] = 'locked';
-      }
-    });
-
-    return statuses;
-  }, [skills]);
-
-  // Organize visas by tier
+  // ========================================================================
+  // ORGANIZE VISAS BY TIER + STARTING POINT
+  // ========================================================================
   const visasByTier = useMemo(() => {
-    const tiers: Record<string, Array<(typeof visaPaths)[0]>> = {
-      start: [],
+    const tiers: Record<string, string[]> = {
+      current: [], // Level 0: User's current visa (if any) or START
       entry: [],
       intermediate: [],
       advanced: [],
     };
 
-    visaPaths.forEach((visa) => {
-      const tier = visa.tier || 'intermediate';
-      if (!tiers[tier]) tiers[tier] = [];
-      tiers[tier].push(visa);
+    // Level 0: Current visa or START node
+    if (userProfile.currentVisa) {
+      // User has visa: show that visa as starting point
+      tiers.current = [userProfile.currentVisa.toLowerCase()];
+    } else {
+      // User has no visa: show START node
+      tiers.current = ['start'];
+    }
+
+    // Levels 1-3: Other visas organized by tier from knowledge base
+    Object.keys(VISA_KNOWLEDGE_BASE).forEach((visaId) => {
+      const visa = VISA_KNOWLEDGE_BASE[visaId];
+
+      // Skip if this is the current visa (already at Level 0)
+      if (visaId === userProfile.currentVisa?.toLowerCase()) {
+        return;
+      }
+
+      // Skip START node (handled separately above)
+      if (visaId === 'start') {
+        return;
+      }
+
+      // Organize by tier
+      const tier = visa.tier;
+      if (tier === 'entry' && !tiers.entry.includes(visaId)) {
+        tiers.entry.push(visaId);
+      } else if (tier === 'intermediate' && !tiers.intermediate.includes(visaId)) {
+        tiers.intermediate.push(visaId);
+      } else if (tier === 'advanced' && !tiers.advanced.includes(visaId)) {
+        tiers.advanced.push(visaId);
+      }
     });
 
     return tiers;
-  }, []);
+  }, [userProfile.currentVisa]);
 
-  // Calculate positions for hierarchical layout
-  const tierOrder = ['start', 'entry', 'intermediate', 'advanced'];
-  
+  // ========================================================================
+  // TIER ORDERING & POSITIONING
+  // ========================================================================
+  const tierOrder = ['current', 'entry', 'intermediate', 'advanced'];
+
   const getVisaPosition = (tier: string, index: number, total: number) => {
     const tierIdx = tierOrder.indexOf(tier);
-    const tierX = 80 + tierIdx * 220; // Horizontal spacing
-    const tierY = 160 + (index - (total - 1) / 2) * 100; // Vertical centering
+    const tierX = 80 + tierIdx * 220; // Horizontal spacing between tiers
+    const tierY = 160 + (index - (total - 1) / 2) * 100; // Vertical centering within tier
     return { x: tierX, y: tierY };
   };
 
-  // Get line style based on status
   const getLineStyle = (status: 'recommended' | 'available' | 'locked') => {
     switch (status) {
       case 'recommended':
@@ -106,23 +145,24 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
     }
   };
 
-  // Render lines connecting visas
+  // ========================================================================
+  // RENDER CONNECTIONS (LINES) BETWEEN TIERS
+  // ========================================================================
   const renderConnections = () => {
     const lines: React.ReactNode[] = [];
     let lineId = 0;
 
-    tierOrder.forEach((tier, tierIdx) => {
-      if (tierIdx >= tierOrder.length - 1) return;
-      
-      const nextTier = tierOrder[tierIdx + 1];
-      const currentTierVisas = visasByTier[tier] || [];
-      const nextTierVisas = visasByTier[nextTier] || [];
+    for (let i = 0; i < tierOrder.length - 1; i++) {
+      const currentTier = tierOrder[i];
+      const nextTier = tierOrder[i + 1];
+      const currentVisas = visasByTier[currentTier] || [];
+      const nextVisas = visasByTier[nextTier] || [];
 
-      currentTierVisas.forEach((_, currentIdx) => {
-        nextTierVisas.forEach((nextVisa, nextIdx) => {
-          const currentPos = getVisaPosition(tier, currentIdx, currentTierVisas.length);
-          const nextPos = getVisaPosition(nextTier, nextIdx, nextTierVisas.length);
-          const nextStatus = visaStatuses[nextVisa.id];
+      currentVisas.forEach((_, currentIdx) => {
+        nextVisas.forEach((nextVisaId, nextIdx) => {
+          const currentPos = getVisaPosition(currentTier, currentIdx, currentVisas.length);
+          const nextPos = getVisaPosition(nextTier, nextIdx, nextVisas.length);
+          const nextStatus = visaRecommendations[nextVisaId]?.status || 'locked';
           const lineStyle = getLineStyle(nextStatus);
 
           lines.push(
@@ -138,86 +178,127 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
           );
         });
       });
-    });
+    }
 
     return lines;
   };
 
+  // ========================================================================
+  // RENDER VISA NODES
+  // ========================================================================
+  const renderVisaNodes = () => {
+    const nodes: React.ReactNode[] = [];
+
+    tierOrder.forEach((tier) => {
+      const visaIds = visasByTier[tier] || [];
+      const isCurrentTier = tier === 'current';
+
+      visaIds.forEach((visaId, index) => {
+        const visa = VISA_KNOWLEDGE_BASE[visaId];
+        const status = visaRecommendations[visaId]?.status || 'locked';
+        const isSelected = selectedVisa === visaId;
+        const isCurrentVisa = isCurrentTier && userProfile.currentVisa;
+
+        if (!visa) return; // Skip if visa not found
+
+        const pos = getVisaPosition(tier, index, visaIds.length);
+
+        // Soft hedging language based on status
+        const statusLabel =
+          status === 'recommended'
+            ? 'May be eligible'
+            : status === 'available'
+              ? 'Could be a path'
+              : 'Requirements not met';
+
+        nodes.push(
+          <button
+            key={visaId}
+            onClick={() => onVisaSelect(visaId)}
+            className={`absolute w-20 h-20 rounded-full flex flex-col items-center justify-center font-bold text-center transition-all duration-200 cursor-pointer group ${
+              isSelected ? 'ring-2 ring-yellow-400 scale-110 z-30' : 'hover:scale-105 z-10'
+            } ${
+              isCurrentVisa
+                ? 'w-24 h-24 ring-2 ring-yellow-300 ring-opacity-50 shadow-2xl shadow-yellow-400/50 scale-105'
+                : ''
+            } ${
+              status === 'recommended'
+                ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg shadow-green-500/50'
+                : status === 'available'
+                  ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/50'
+                  : 'bg-gradient-to-br from-gray-600 to-gray-700 text-gray-300 opacity-60 shadow-lg shadow-gray-600/30 cursor-not-allowed'
+            }`}
+            style={{
+              left: `${pos.x}px`,
+              top: `${pos.y}px`,
+              transform: 'translate(-50%, -50%)',
+            }}
+            disabled={status === 'locked'}
+            title={statusLabel}
+          >
+            <div className="text-2xl">{visa.emoji}</div>
+            <div className="text-xs font-semibold leading-tight">{visa.code}</div>
+
+            {/* "You are here" label for current visa */}
+            {isCurrentVisa && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-yellow-300 font-bold text-xs whitespace-nowrap">
+                ⭐ You are here
+              </div>
+            )}
+
+            {/* Hover Card with visa name + status */}
+            <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 border border-slate-700">
+              <div className="font-semibold">{visa.name}</div>
+              <div className="text-slate-400 text-xs">{statusLabel}</div>
+            </div>
+          </button>
+        );
+      });
+    });
+
+    return nodes;
+  };
+
+  // ========================================================================
+  // RENDER MAP
+  // ========================================================================
   return (
     <div className="relative w-full h-full bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-lg overflow-hidden">
       {/* Legend */}
       <div className="absolute top-4 right-4 bg-slate-800/80 backdrop-blur rounded-lg p-3 text-xs z-40 border border-slate-700">
-        <div className="font-semibold mb-2 text-slate-200">Visa Status</div>
+        <div className="font-semibold mb-2 text-slate-200">Your Profile Match</div>
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-slate-300">Recommended</span>
+            <span className="text-slate-300">May be eligible (90%+)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span className="text-slate-300">Available</span>
+            <span className="text-slate-300">Could be a path (50%+)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-            <span className="text-slate-300">Locked</span>
+            <span className="text-slate-300">Strengthen skills first</span>
           </div>
         </div>
       </div>
 
       {/* Tier Labels */}
       <div className="absolute top-0 left-0 right-0 h-16 flex items-center px-4 text-xs text-slate-400 font-semibold pointer-events-none">
-        <div style={{ marginLeft: '80px' }}>Start</div>
+        <div style={{ marginLeft: '80px' }}>Current</div>
         <div style={{ marginLeft: '200px' }}>Entry Level</div>
         <div style={{ marginLeft: '200px' }}>Intermediate</div>
         <div style={{ marginLeft: '200px' }}>Advanced</div>
       </div>
 
-      {/* SVG Canvas for Connections */}
+      {/* SVG Canvas for Connection Lines */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
         {renderConnections()}
       </svg>
 
       {/* Visa Nodes */}
       <div className="relative w-full h-full pt-16">
-        {tierOrder.map((tier) =>
-          (visasByTier[tier] || []).map((visa, index) => {
-            const pos = getVisaPosition(tier, index, (visasByTier[tier] || []).length);
-            const isSelected = selectedVisa === visa.id;
-            const status = visaStatuses[visa.id];
-
-            return (
-              <button
-                key={visa.id}
-                onClick={() => onVisaSelect(visa.id)}
-                className={`absolute w-20 h-20 rounded-full flex flex-col items-center justify-center font-bold text-center transition-all duration-200 cursor-pointer group ${
-                  isSelected
-                    ? 'ring-2 ring-yellow-400 scale-110 z-30'
-                    : 'hover:scale-105 z-10'
-                } ${
-                  status === 'recommended'
-                    ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg shadow-green-500/50'
-                    : status === 'available'
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'bg-gradient-to-br from-gray-600 to-gray-700 text-gray-300 opacity-60 shadow-lg shadow-gray-600/30 cursor-not-allowed'
-                }`}
-                style={{
-                  left: `${pos.x}px`,
-                  top: `${pos.y}px`,
-                  transform: 'translate(-50%, -50%)',
-                }}
-                disabled={status === 'locked'}
-              >
-                <div className="text-2xl">{visa.emoji}</div>
-                <div className="text-xs font-semibold leading-tight">{visa.id.toUpperCase()}</div>
-
-                {/* Hover Card */}
-                <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 border border-slate-700">
-                  {visa.name}
-                </div>
-              </button>
-            );
-          })
-        )}
+        {renderVisaNodes()}
       </div>
     </div>
   );
