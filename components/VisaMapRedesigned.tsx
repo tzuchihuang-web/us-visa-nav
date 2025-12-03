@@ -77,6 +77,11 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   // ========================================================================
   // ORGANIZE VISAS BY TIER + STARTING POINT
   // ========================================================================
+  // FILTER CATEGORIES (exclude tourist visas):
+  // - Include: student, worker, investor, immigrant
+  // - Exclude: tourist, visitor, family, special
+  const INCLUDED_CATEGORIES = ['student', 'worker', 'investor', 'immigrant'];
+
   const visasByTier = useMemo(() => {
     const tiers: Record<string, string[]> = {
       current: [], // Level 0: User's current visa (if any) or START
@@ -88,15 +93,28 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
     // Level 0: Current visa or START node
     if (userProfile.currentVisa) {
       // User has visa: show that visa as starting point
-      tiers.current = [userProfile.currentVisa.toLowerCase()];
+      // But only if it's a work/long-term visa (not tourist)
+      const currentVisa = VISA_KNOWLEDGE_BASE[userProfile.currentVisa.toLowerCase()];
+      if (currentVisa && INCLUDED_CATEGORIES.includes(currentVisa.category)) {
+        tiers.current = [userProfile.currentVisa.toLowerCase()];
+      } else {
+        // If current visa is tourist/family/etc, show START instead
+        tiers.current = ['start'];
+      }
     } else {
       // User has no visa: show START node
       tiers.current = ['start'];
     }
 
     // Levels 1-3: Other visas organized by tier from knowledge base
+    // FILTER: Only include work/long-term categories, skip tourist
     Object.keys(VISA_KNOWLEDGE_BASE).forEach((visaId) => {
       const visa = VISA_KNOWLEDGE_BASE[visaId];
+
+      // SKIP if not in included categories (e.g., skip B-2 tourist)
+      if (!INCLUDED_CATEGORIES.includes(visa.category)) {
+        return;
+      }
 
       // Skip if this is the current visa (already at Level 0)
       if (visaId === userProfile.currentVisa?.toLowerCase()) {
@@ -125,12 +143,32 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   // ========================================================================
   // TIER ORDERING & POSITIONING
   // ========================================================================
+  // MAP POSITIONING LOGIC:
+  // X-axis (horizontal):
+  // - Uses tier ordering: current → entry → intermediate → advanced
+  // - Reflects progression time: short-term visas left, long-term right
+  // - timeHorizon field from knowledge base could further refine spacing
+  //
+  // Y-axis (vertical):
+  // - Uses difficulty field to position harder visas higher
+  // - Centers visas within their tier based on difficulty
+  // - Creates visual hierarchy: easier paths lower, harder paths higher
+  //
+  // Node size/styling:
+  // - requiredEligibilityScore influences visual weight
+  // - Status colors (green/blue/gray) show eligibility
+  
   const tierOrder = ['current', 'entry', 'intermediate', 'advanced'];
 
-  const getVisaPosition = (tier: string, index: number, total: number) => {
+  const getVisaPosition = (tier: string, index: number, total: number, visa?: any) => {
     const tierIdx = tierOrder.indexOf(tier);
     const tierX = 80 + tierIdx * 220; // Horizontal spacing between tiers
-    const tierY = 160 + (index - (total - 1) / 2) * 100; // Vertical centering within tier
+    
+    // Y-axis: Use difficulty to influence positioning
+    // Higher difficulty = higher on Y-axis (slightly)
+    const difficultyOffset = visa?.difficulty ? (visa.difficulty - 1) * 30 : 0;
+    const tierY = 160 + (index - (total - 1) / 2) * 100 + difficultyOffset;
+    
     return { x: tierX, y: tierY };
   };
 
@@ -201,7 +239,8 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
 
         if (!visa) return; // Skip if visa not found
 
-        const pos = getVisaPosition(tier, index, visaIds.length);
+        // POSITION CALCULATION: Pass visa object to use difficulty field
+        const pos = getVisaPosition(tier, index, visaIds.length, visa);
 
         // Soft hedging language based on status
         const statusLabel =
