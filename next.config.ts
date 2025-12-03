@@ -5,7 +5,8 @@ const nextConfig: NextConfig = {
   output: "export",
   
   // Set basePath for GitHub Pages (repo name)
-  basePath: "/us-visa-nav",
+  // Disabled for local development - uncomment for production build
+  // basePath: "/us-visa-nav",
   
   // Disable image optimization for static export
   images: {
