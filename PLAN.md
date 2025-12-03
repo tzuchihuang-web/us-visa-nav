@@ -30,12 +30,21 @@ npm install @supabase/supabase-js
 npx shadcn-ui@latest init
 ```
 
+**Setup Supabase**:
+1. Get your Supabase credentials (Project URL + Anon Key)
+2. Create `.env.local`:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
 **Output**: Working Next.js dev environment
 - `npm run dev` works
 - Tailwind + Shadcn/ui ready
 - TypeScript configured
+- Supabase client ready to use
 
-**Time**: 15 minutes
+**Time**: 20 minutes
 
 ---
 
@@ -98,55 +107,62 @@ npx shadcn-ui@latest init
 
 ---
 
-### Hour 4.5-5.5: Build Auth Pages (Mock)
-**What**: Signup & login pages (NO real auth yet, just forms)
+### Hour 4.5-5.5: Build Auth Pages (Real Supabase)
+**What**: Signup & login pages with **real Supabase authentication**
 
 **Pages**:
 - `/app/auth/page.tsx` - Combined signup/login form
-- Simple email + password inputs
-- "Sign Up" / "Log In" buttons (just console.log for now, no backend)
-- After submit, redirect to home page
+- Email + password inputs
+- "Sign Up" / "Log In" buttons that call Supabase auth
 
-**Time**: 45 minutes
+**Integration**:
+```typescript
+// Use Supabase auth in a custom hook
+const { signUp, signIn, user } = useSupabaseAuth();
+```
 
-**Validation**: Forms submit without errors; redirect works
+**Functionality**:
+- Sign up creates new user in Supabase
+- Login authenticates against Supabase
+- After auth, redirect to home page
+- Show error messages if auth fails
+
+**Time**: 60 minutes
+
+**Validation**: Users created in Supabase dashboard; authentication works
 
 ---
 
-### Hour 5.5-6.5: Create Mock Data
-**What**: Hardcoded visa data so you don't need a database
+### Hour 5.5-6.5: Create Mock Visa Data & Supabase Types
+**What**: Hardcoded visa data + setup Supabase tables for user data
 
-**File**: `/lib/mockData.ts`
+**File**: `/lib/mockData.ts` - Visa catalog (doesn't change)
 ```typescript
 export const VISA_DATA = [
-  {
-    id: 'F-1',
-    name: 'F-1 Student Visa',
-    description: 'For international students',
-    processingTime: '2-4 weeks',
-    cost: '$0',
-    requirements: ['Passport', 'I-20 Form', 'Proof of Funds']
-  },
-  {
-    id: 'H-1B',
-    name: 'H-1B Work Visa',
-    description: 'For specialty occupations',
-    processingTime: '3-6 months',
-    cost: '$460-$2,500',
-    requirements: ['Job Offer', 'LCA Filing', 'I-129 Form']
-  },
-  // ... 3-4 more visa types
+  { id: 'F-1', name: 'F-1 Student Visa', ... },
+  { id: 'H-1B', name: 'H-1B Work Visa', ... },
+  // ... more visas
 ];
-
-export const MOCK_USER = {
-  name: 'Demo User',
-  email: 'demo@example.com',
-  currentVisa: 'F-1',
-  eligibleVisas: ['H-1B', 'O-1', 'L-1']
-};
 ```
 
-**Time**: 30 minutes
+**Supabase Setup**:
+1. Create `users` table (auto-managed by Supabase auth)
+2. Create `user_profiles` table:
+   - `id` (links to auth user)
+   - `current_visa` (text)
+   - `eligible_visas` (array)
+   - `updated_at` (timestamp)
+3. Create `applications` table:
+   - `id`, `user_id`, `visa_type`, `current_step`, `progress`
+
+**Output**: 
+- Visa data ready in code
+- Supabase tables ready for persistence
+- User data will be saved to Supabase (not just mock)
+
+**Time**: 45 minutes
+
+**Validation**: Tables created in Supabase; can query with Supabase client
 
 ---
 
@@ -358,12 +374,20 @@ git push origin main
 
 ## What You're Skipping (For Now)
 
-❌ Real Supabase authentication (use mock/local storage)
-❌ Real database (use mock JSON data)
+❌ Complex business logic (simple eligibility rules only)
 ❌ Testing (move to Phase 2)
 ❌ Accessibility optimization (basic is fine)
-❌ Complex business logic (simple eligibility rules only)
 ❌ Advanced features (AI matching, case studies, etc.)
+❌ Email notifications
+❌ Payment/billing features
+
+## What You're KEEPING (Real Backend)
+
+✅ **Real Supabase auth** (sign up, login, sessions)
+✅ **Real database** (user profiles, applications stored in Supabase)
+✅ **Visa catalog** as mock data (doesn't need to be dynamic yet)
+✅ **Responsive design**
+✅ **Professional UI** with Shadcn/ui
 
 ---
 
