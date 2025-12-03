@@ -41,6 +41,7 @@ export interface UserProfile {
   citizenship_level?: number;
   investment_level?: number;
   language_level?: number;
+  onboarding_data?: any; // JSONB data from onboarding questionnaire
   created_at?: string;
   updated_at?: string;
 }

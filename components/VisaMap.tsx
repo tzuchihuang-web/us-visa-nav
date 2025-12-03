@@ -377,7 +377,7 @@ function VisaNodeElement({
   );
 }
 
-export function VisaMap() {
+export function VisaMap({ recommendedVisas = [] }: { recommendedVisas?: string[] }) {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   // CUSTOMIZE: Determine starting visa and eligible paths
@@ -405,7 +405,9 @@ export function VisaMap() {
       {/* Visa nodes */}
       <div className="relative w-full h-full">
         {visasToShow.map((visa) => {
-          const state = getVisaState(visa, userProfile.skills);
+          const baseState = getVisaState(visa, userProfile.skills);
+          // Override state to "recommended" if this visa is in recommendedVisas
+          const state = recommendedVisas.includes(visa.id) ? "recommended" : baseState;
           const isStarting = visa.id === startingVisaId;
           const pos = positions[visa.id];
 

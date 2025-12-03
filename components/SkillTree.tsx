@@ -3,15 +3,38 @@
  * 
  * Displays user profile and skill nodes with lock/unlock states.
  * Shows the user's visa-related attributes that influence map availability.
+ * 
+ * PHASE 3 UPDATE:
+ * - Now accepts skillLevels as props from onboarding data
+ * - Falls back to default userProfile if no data provided
+ * - Dynamically renders skills based on prop values
  */
 
+'use client';
+
 import { userProfile } from "@/lib/mapData";
+import { UserProfileCard } from './UserProfileCard';
+import { OnboardingData } from '@/lib/types/onboarding';
 
 interface SkillNode {
   name: string;
   level: number;
   unlocked: boolean;
   icon: string;
+}
+
+interface SkillTreeProps {
+  skillLevels?: {
+    education: number;
+    workExperience: number;
+    fieldOfWork: number;
+    citizenship: number;
+    investment: number;
+    language: number;
+  };
+  onboardingData?: OnboardingData;
+  recommendedVisas?: string[];
+  userName?: string;
 }
 
 function SkillTreeNode({ skillKey, skill }: { skillKey: string; skill: SkillNode }) {
@@ -73,8 +96,57 @@ function SkillTreeNode({ skillKey, skill }: { skillKey: string; skill: SkillNode
   );
 }
 
-export function SkillTree() {
-  const { name, currentStatus, skills } = userProfile;
+export function SkillTree(props: SkillTreeProps = {}) {
+  const {
+    skillLevels,
+    onboardingData,
+    recommendedVisas = [],
+    userName,
+  } = props;
+
+  // Use provided skillLevels or default to userProfile
+  const { name: defaultName, currentStatus, skills: defaultSkills } = userProfile;
+  const displayName = userName || defaultName;
+
+  // Map skillLevels prop to skills format for rendering
+  const skillsToDisplay = skillLevels ? {
+    education: {
+      name: "Education Level",
+      level: skillLevels.education,
+      unlocked: true,
+      icon: "🎓",
+    },
+    workExperience: {
+      name: "Work Experience",
+      level: skillLevels.workExperience,
+      unlocked: true,
+      icon: "💼",
+    },
+    fieldOfWork: {
+      name: "Field of Work",
+      level: skillLevels.fieldOfWork,
+      unlocked: skillLevels.fieldOfWork > 0,
+      icon: "🔧",
+    },
+    citizenship: {
+      name: "Country of Citizenship",
+      level: skillLevels.citizenship,
+      unlocked: true,
+      icon: "🌍",
+    },
+    investment: {
+      name: "Investment Amount",
+      level: skillLevels.investment,
+      unlocked: skillLevels.investment > 0,
+      icon: "💰",
+    },
+    language: {
+      name: "English Proficiency",
+      level: skillLevels.language,
+      unlocked: true,
+      icon: "🗣️",
+    },
+  } : defaultSkills;
 
   // CUSTOMIZE: Modify status labels here
   const statusLabels = {
@@ -87,11 +159,20 @@ export function SkillTree() {
     <div className="w-96 bg-white border-r border-gray-200 p-8 overflow-y-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">{name}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h1>
         <p className="text-sm text-gray-600">
           {statusLabels[currentStatus as keyof typeof statusLabels] || currentStatus}
         </p>
       </div>
+
+      {/* User Profile Card from Onboarding */}
+      {onboardingData && (
+        <UserProfileCard
+          onboardingData={onboardingData}
+          recommendedVisas={recommendedVisas}
+          name={displayName}
+        />
+      )}
 
       {/* Section divider */}
       <div className="mb-6 pb-4 border-b border-gray-200">
@@ -102,7 +183,7 @@ export function SkillTree() {
 
       {/* Skill nodes */}
       <div>
-        {Object.entries(skills).map(([skillKey, skill]) => (
+        {Object.entries(skillsToDisplay).map(([skillKey, skill]) => (
           <SkillTreeNode key={skillKey} skillKey={skillKey} skill={skill as SkillNode} />
         ))}
       </div>
