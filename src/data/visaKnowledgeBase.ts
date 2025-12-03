@@ -187,7 +187,7 @@ export const VISA_KNOWLEDGE_BASE: Visa[] = [
     difficulty: "high",
     notes:
       "H-1B is a common path from F-1/OPT to longer-term employment and can lead to employment-based green cards such as EB-2.",
-    commonNextSteps: ["EB2", "EB1C"],
+    commonNextSteps: ["EB2", "EB1C", "L1B", "O1"],
   },
 
   // ---------------------------------------------------------------------------
@@ -272,7 +272,7 @@ export const VISA_KNOWLEDGE_BASE: Visa[] = [
     difficulty: "high",
     notes:
       "L-1B can sometimes be a bridge to multinational manager/executive green cards such as EB-1C, or to EB-2 depending on the profile.",
-    commonNextSteps: ["EB1C", "EB2"],
+    commonNextSteps: ["EB1C", "EB2", "H1B"],
   },
 
   // ---------------------------------------------------------------------------
