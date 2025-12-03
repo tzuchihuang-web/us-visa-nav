@@ -109,10 +109,10 @@ export function VisaCard({
         </div>
       </Link>
 
-      <style jsx>{`
+      {/* Float animation using CSS-in-JS alternative */}
+      <style>{`
         @keyframes float {
-          0%,
-          100% {
+          0%, 100% {
             transform: translateY(0px);
           }
           50% {

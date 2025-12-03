@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -147,7 +145,7 @@ export default function Home() {
           </p>
         </section>
 
-        <style jsx>{`
+        <style>{`
           @keyframes blob {
             0%,
             100% {

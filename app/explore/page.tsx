@@ -1,5 +1,3 @@
-"use client";
-
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { visaCategories } from "@/lib/mockData";
