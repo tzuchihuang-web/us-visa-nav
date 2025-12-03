@@ -111,6 +111,12 @@ export default function Home() {
     setSelectedVisa(visaCode);
     setIsPanelOpen(true);
   };
+
+  const handleClosePanel = () => {
+    setSelectedVisa(null);
+    setIsPanelOpen(false);
+  };
+
   const handleSaveProfile = async (): Promise<boolean> => {
     const success = await saveProfile();
     if (success) {
@@ -190,7 +196,7 @@ export default function Home() {
                     ? !selectedVisaData.matchResult.failedRules.some(r => r.includes('experience'))
                     : false,
                 }}
-                onClose={() => setIsPanelOpen(false)}
+                onClose={handleClosePanel}
               />
             )}
           </div>

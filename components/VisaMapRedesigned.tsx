@@ -131,6 +131,64 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   }, []);
 
   /**
+   * FIND PATH BETWEEN TWO VISAS USING BFS
+   * 
+   * Uses breadth-first search to find the shortest path from one visa to another
+   * following the edges defined in the adjacency graph (commonNextSteps).
+   * 
+   * @param adjacency - The visa adjacency graph (visaId -> [nextVisaIds])
+   * @param fromId - Starting visa ID (lowercase)
+   * @param toId - Target visa ID (lowercase)
+   * @returns Array of visa IDs forming the path (including from and to), or null if no path exists
+   * 
+   * Example: findPathBetweenVisas(graph, 'f1', 'eb2gc') -> ['f1', 'opt', 'h1b', 'eb2gc']
+   */
+  const findPathBetweenVisas = (
+    adjacency: Record<string, string[]>,
+    fromId: string,
+    toId: string
+  ): string[] | null => {
+    // Normalize to lowercase
+    const normalizedFrom = fromId.toLowerCase();
+    const normalizedTo = toId.toLowerCase();
+
+    // Edge case: same visa
+    if (normalizedFrom === normalizedTo) {
+      return [normalizedFrom];
+    }
+
+    // BFS to find shortest path
+    const queue: Array<{ visaId: string; path: string[] }> = [
+      { visaId: normalizedFrom, path: [normalizedFrom] },
+    ];
+    const visited = new Set<string>([normalizedFrom]);
+
+    while (queue.length > 0) {
+      const { visaId, path } = queue.shift()!;
+
+      // Get neighbors from adjacency graph
+      const neighbors = adjacency[visaId] || [];
+
+      for (const nextVisaId of neighbors) {
+        if (visited.has(nextVisaId)) continue;
+
+        visited.add(nextVisaId);
+        const newPath = [...path, nextVisaId];
+
+        // Check if we reached the target
+        if (nextVisaId === normalizedTo) {
+          return newPath;
+        }
+
+        queue.push({ visaId: nextVisaId, path: newPath });
+      }
+    }
+
+    // No path found
+    return null;
+  };
+
+  /**
    * COMPUTE TIERS VIA BREADTH-FIRST SEARCH (BFS)
    * 
    * Starting from the current visa (or START), perform BFS to assign each
@@ -229,6 +287,41 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   }, [userProfile.currentVisa, adjacencyGraph]);
 
   // ========================================================================
+  // PATH HIGHLIGHTING: Compute highlighted path from currentVisa to selectedVisa
+  // ========================================================================
+  
+  /**
+   * HIGHLIGHTED PATH COMPUTATION
+   * 
+   * When a user clicks a visa node on the map:
+   * 1. Find the shortest path from currentVisa → selectedVisa using BFS
+   * 2. Store all visa IDs on that path in highlightedPathIds
+   * 3. Nodes and edges NOT on the path will be dimmed (reduced opacity)
+   * 4. When selectedVisa is null, highlightedPathIds is also null (no dimming)
+   * 
+   * This creates a visual focus on the user's potential visa journey path.
+   */
+  const highlightedPathIds = useMemo(() => {
+    // No selection = no highlighting (all nodes/edges normal)
+    if (!selectedVisa) return null;
+
+    const currentVisaId = userProfile.currentVisa?.toLowerCase() || 'start';
+    const selectedVisaId = selectedVisa.toLowerCase();
+
+    // Find path using BFS
+    const path = findPathBetweenVisas(adjacencyGraph, currentVisaId, selectedVisaId);
+    
+    if (!path) {
+      // No path found: highlight just the current visa and selected visa
+      console.info('[VisaMapRedesigned] No path found, highlighting endpoints only');
+      return new Set([currentVisaId, selectedVisaId]);
+    }
+
+    console.info('[VisaMapRedesigned] Highlighted path:', path);
+    return new Set(path);
+  }, [selectedVisa, userProfile.currentVisa, adjacencyGraph]);
+
+  // ========================================================================
   // TIER ORDERING & POSITIONING
   // ========================================================================
   
@@ -323,6 +416,15 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
           const nextStatus = visaRecommendations[nextVisaId]?.status || 'locked';
           const lineStyle = getLineStyle(nextStatus);
 
+          // Check if this edge is on the highlighted path
+          // An edge is highlighted if BOTH endpoints are in highlightedPathIds
+          const isEdgeOnPath = !highlightedPathIds || 
+            (highlightedPathIds.has(visaId.toLowerCase()) && 
+             highlightedPathIds.has(nextVisaId.toLowerCase()));
+          
+          // Dim edges not on the highlighted path
+          const edgeOpacity = isEdgeOnPath ? 0.6 : 0.15;
+
           lines.push(
             <line
               key={`line-${lineId++}`}
@@ -331,7 +433,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
               x2={nextPos.x}
               y2={nextPos.y + 35}
               {...lineStyle}
-              opacity="0.6"
+              opacity={edgeOpacity}
             />
           );
         });
@@ -374,6 +476,10 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
         // POSITION CALCULATION: Pass visa object to use difficulty field
         const pos = getVisaPosition(tier, index, visaIds.length, visa);
 
+        // Check if this node is on the highlighted path
+        const isOnHighlightedPath = !highlightedPathIds || highlightedPathIds.has(visaId.toLowerCase());
+        const isDimmed = !!highlightedPathIds && !isOnHighlightedPath;
+
         // Soft hedging language based on status
         const statusLabel =
           status === 'recommended'
@@ -403,6 +509,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
               left: `${pos.x}px`,
               top: `${pos.y}px`,
               transform: 'translate(-50%, -50%)',
+              opacity: isDimmed ? 0.25 : 1,
             }}
             disabled={status === 'locked'}
             title={statusLabel}

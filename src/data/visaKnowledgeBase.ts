@@ -44,7 +44,7 @@ export const visaKnowledgeBase: Visa[] = [
     timeHorizon: "short",
     difficulty: "medium",
     notes: "F-1 students commonly transition into OPT for practical training.",
-    commonNextSteps: ["OPT", "H1B", "O1", "EB2"]
+    commonNextSteps: ["OPT", "H1B", "O1", "EB2", "E2"]
   },
   {
     id: "OPT",
