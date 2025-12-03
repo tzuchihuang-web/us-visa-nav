@@ -169,22 +169,22 @@ export default function Home() {
                 visa={{
                   id: selectedVisaData.visa.id,
                   name: selectedVisaData.visa.name,
-                  emoji: selectedVisaData.visa.emoji,
-                  description: selectedVisaData.visa.shortDescription,
+                  emoji: selectedVisaData.visa.iconEmoji || '📄',
+                  description: selectedVisaData.visa.officialDescription,
                   fullDescription: selectedVisaData.visa.officialDescription,
                   category: selectedVisaData.visa.category,
                   status: selectedVisaData.status,
                   timeHorizon: selectedVisaData.visa.timeHorizon,
-                  difficulty: selectedVisaData.visa.difficulty,
+                  difficulty: selectedVisaData.visa.difficulty 
+                    ? (selectedVisaData.visa.difficulty === 'low' ? 1 : selectedVisaData.visa.difficulty === 'medium' ? 2 : 3)
+                    : undefined,
                   requirements: {
-                    education: selectedVisaData.visa.eligibilityRules
-                      .filter(r => r.field === 'educationLevel')
-                      .map(r => r.description)
-                      .join(', '),
-                    experience: selectedVisaData.visa.eligibilityRules
-                      .filter(r => r.field === 'yearsOfExperience')
-                      .map(r => r.description)
-                      .join(', '),
+                    education: selectedVisaData.visa.eligibilityCriteria
+                      .filter(c => c.toLowerCase().includes('education') || c.toLowerCase().includes('degree'))
+                      .join(', ') || 'See eligibility criteria',
+                    experience: selectedVisaData.visa.eligibilityCriteria
+                      .filter(c => c.toLowerCase().includes('experience') || c.toLowerCase().includes('year'))
+                      .join(', ') || 'See eligibility criteria',
                   },
                 }}
                 userMeets={{
