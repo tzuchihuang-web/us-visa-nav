@@ -1,14 +1,17 @@
 /**
  * Visa Detail Panel Component
  * 
- * PHASE 4: Right-side fixed panel for visa details
- * - Fixed position on right side of screen (outside map canvas)
- * - Opens when user clicks a visa node
- * - Closes when clicking outside or X button
- * - Shows visa info, requirements, user match status
+ * REDESIGNED: Bottom expandable panel for visa details
+ * - Opens below the map when user clicks a visa node
+ * - Doesn't block the map view
+ * - Two modes: compact (requirements only) and expanded (full details)
+ * - Shows visa info, requirements, timeline, documents, and process steps
  */
 
 'use client';
+
+import { useState } from 'react';
+import { VISA_KNOWLEDGE_BASE } from '@/lib/visa-knowledge-base';
 
 interface VisaRequirements {
   education?: string;
@@ -56,7 +59,12 @@ export function VisaDetailPanel({
   onClose,
   onExplore,
 }: VisaDetailPanelProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
   if (!isOpen || !visa) return null;
+
+  // Get full visa data from knowledge base for expanded view
+  const fullVisaData = visa.id ? VISA_KNOWLEDGE_BASE[visa.id.toUpperCase()] : null;
 
   const statusConfig = {
     recommended: {
@@ -81,88 +89,92 @@ export function VisaDetailPanel({
 
   const config = statusConfig[visa.status];
 
+  const handleExplorePath = () => {
+    setIsExpanded(true);
+    if (onExplore) {
+      onExplore();
+    }
+  };
+
   return (
     <>
-      {/* Backdrop - Click to close */}
+      {/* Bottom Panel - Slides up from bottom */}
       <div
-        className="fixed inset-0 z-40 bg-black/0 pointer-events-auto"
-        onClick={onClose}
-        style={{ right: '360px' }}
-      />
-
-      {/* Panel */}
-      <div
-        className={`fixed right-0 top-0 h-screen w-96 z-50 bg-white border-l shadow-xl overflow-y-auto ${config.border}`}
-        onClick={(e) => e.stopPropagation()}
+        className={`fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 shadow-2xl transition-all duration-300 ${
+          config.border
+        } ${isExpanded ? 'h-[80vh]' : 'h-auto max-h-[50vh]'} overflow-hidden`}
       >
-        {/* Header */}
-        <div className={`${config.bg} border-b ${config.border} p-6 sticky top-0`}>
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <span className="text-4xl">{visa.emoji}</span>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">{visa.name}</h2>
-                <p className="text-sm text-gray-600">{visa.category}</p>
+        {/* Panel Content */}
+        <div className="h-full flex flex-col">
+          {/* Header - Always visible */}
+          <div className={`${config.bg} border-b ${config.border} p-4 flex-shrink-0`}>
+            <div className="max-w-7xl mx-auto">
+                  <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-4">
+                  <span className="text-5xl">{visa.emoji}</span>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{visa.name}</h2>
+                    <p className="text-sm text-gray-600 mt-1">{visa.category}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none font-light"
+                  aria-label="Close panel"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Status Badge & Meta Info */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${config.badge}`}>
+                  {config.text}
+                </div>
+
+                {visa.timeHorizon && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <span className="text-gray-500">⏱️</span>
+                    <span className="text-gray-700 font-medium">
+                      {visa.timeHorizon === 'short' && 'Short-term (6mo-1yr)'}
+                      {visa.timeHorizon === 'medium' && 'Medium-term (1-3yr)'}
+                      {visa.timeHorizon === 'long' && 'Long-term (3+ yr)'}
+                    </span>
+                  </div>
+                )}
+
+                {visa.difficulty && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <span className="text-gray-500">📊</span>
+                    <span className="text-gray-700 font-medium">
+                      {visa.difficulty === 1 && 'Easy'}
+                      {visa.difficulty === 2 && 'Moderate'}
+                      {visa.difficulty === 3 && 'Difficult'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-              aria-label="Close panel"
-            >
-              ×
-            </button>
           </div>
 
-          {/* Status Badge */}
-          <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${config.badge}`}>
-            {config.text}
-          </div>
-
-          {/* Meta Info: Time Horizon & Difficulty */}
-          {(visa.timeHorizon || visa.difficulty) && (
-            <div className="flex gap-4 mt-3 text-xs">
-              {visa.timeHorizon && (
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-500">⏱️</span>
-                  <span className="text-gray-700 font-medium">
-                    {visa.timeHorizon === 'short' && 'Short-term (6mo-1yr)'}
-                    {visa.timeHorizon === 'medium' && 'Medium-term (1-3yr)'}
-                    {visa.timeHorizon === 'long' && 'Long-term (3+ yr)'}
-                  </span>
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-7xl mx-auto p-6 space-y-6">
+              {/* Description */}
+              {visa.fullDescription && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2 text-lg">Overview</h3>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {visa.fullDescription}
+                  </p>
                 </div>
               )}
-              {visa.difficulty && (
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-500">📊</span>
-                  <span className="text-gray-700 font-medium">
-                    {visa.difficulty === 1 && 'Easy'}
-                    {visa.difficulty === 2 && 'Moderate'}
-                    {visa.difficulty === 3 && 'Difficult'}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Description */}
-          {visa.fullDescription && (
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Overview</h3>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                {visa.fullDescription}
-              </p>
-            </div>
-          )}
-
-          {/* Requirements */}
-          {visa.requirements && (
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-3">Requirements</h3>
-              <div className="space-y-2">
+              {/* Requirements */}
+              {visa.requirements && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3 text-lg">Requirements</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {visa.requirements.education && (
                   <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                     <div className="mt-1">
@@ -354,60 +366,167 @@ export function VisaDetailPanel({
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
+                  </div>
+                </div>
+              )}
 
-          {/* Match Summary - Shows overall eligibility */}
-          <div className={`p-4 rounded-lg border ${
-            visa.status === 'recommended' 
-              ? 'bg-green-50 border-green-200' 
-              : visa.status === 'available'
-              ? 'bg-blue-50 border-blue-200'
-              : 'bg-amber-50 border-amber-200'
-          }`}>
-            <div className={`text-sm ${
-              visa.status === 'recommended' 
-                ? 'text-green-900' 
-                : visa.status === 'available'
-                ? 'text-blue-900'
-                : 'text-amber-900'
-            }`}>
-              {visa.status === 'recommended' && (
+              {/* Match Summary */}
+              <div className={`p-4 rounded-lg border ${
+                visa.status === 'recommended' 
+                  ? 'bg-green-50 border-green-200' 
+                  : visa.status === 'available'
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-amber-50 border-amber-200'
+              }`}>
+                <div className={`text-sm ${
+                  visa.status === 'recommended' 
+                    ? 'text-green-900' 
+                    : visa.status === 'available'
+                    ? 'text-blue-900'
+                    : 'text-amber-900'
+                }`}>
+                  {visa.status === 'recommended' && (
+                    <>
+                      <strong>✓ Core requirements met:</strong> Your profile strongly aligns with this visa. 
+                      This could be an excellent path for you.
+                    </>
+                  )}
+                  {visa.status === 'available' && (
+                    <>
+                      <strong>Partial match:</strong> You meet many requirements for this visa. 
+                      Consider strengthening a few areas to increase your eligibility.
+                    </>
+                  )}
+                  {visa.status === 'locked' && (
+                    <>
+                      <strong>Requirements not met:</strong> Strengthen your qualifications to explore this path. 
+                      Focus on the requirements marked above.
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Expanded Details - Show when Explore Path clicked */}
+              {isExpanded && fullVisaData && (
                 <>
-                  <strong>✓ Core requirements met:</strong> Your profile strongly aligns with this visa. 
-                  This could be an excellent path for you.
-                </>
-              )}
-              {visa.status === 'available' && (
-                <>
-                  <strong>Partial match:</strong> You meet many requirements for this visa. 
-                  Consider strengthening a few areas to increase your eligibility.
-                </>
-              )}
-              {visa.status === 'locked' && (
-                <>
-                  <strong>Requirements not met:</strong> Strengthen your qualifications to explore this path. 
-                  Focus on the requirements marked above.
+                  {/* Process Steps */}
+                  {fullVisaData.processSteps && fullVisaData.processSteps.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Application Process</h3>
+                      <div className="space-y-3">
+                        {fullVisaData.processSteps
+                          .sort((a, b) => a.order - b.order)
+                          .map((step) => (
+                            <div
+                              key={step.order}
+                              className="flex gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+                            >
+                              <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                                {step.order}
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900 mb-1">{step.title}</h4>
+                                <p className="text-sm text-gray-700">{step.description}</p>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Documents Required */}
+                  {fullVisaData.requirements && fullVisaData.requirements.documents && fullVisaData.requirements.documents.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Required Documents</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {fullVisaData.requirements.documents.map((req, index) => (
+                          <div
+                            key={index}
+                            className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                          >
+                            <span className="text-blue-600">📄</span>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{req.item}</p>
+                              {req.description && (
+                                <p className="text-xs text-gray-600 mt-1">{req.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timeline */}
+                  {fullVisaData.estimatedTotalTime && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Timeline</h3>
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <span className="text-amber-600">⏰</span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              Expected Processing Time
+                            </p>
+                            <p className="text-sm text-gray-700 mt-1">{fullVisaData.estimatedTotalTime}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Official Links */}
+                  {fullVisaData.officialLinks && fullVisaData.officialLinks.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Official Resources</h3>
+                      <div className="space-y-2">
+                        {fullVisaData.officialLinks.map((link, index) => (
+                          <a
+                            key={index}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
+                          >
+                            <span className="text-blue-600">🔗</span>
+                            <span className="text-sm font-medium text-blue-600 hover:underline">
+                              {link.label}
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
           </div>
-        </div>
 
-        {/* CTA Button - Sticky footer */}
-        <div className="sticky bottom-0 p-6 bg-white border-t border-gray-200">
-          <button
-            onClick={onExplore}
-            className={`w-full font-medium py-2 px-4 rounded-lg transition-colors ${
-              visa.status === 'locked'
-                ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
-            disabled={visa.status === 'locked'}
-          >
-            {visa.status === 'locked' ? 'Improve Skills to Unlock' : 'Explore Path'}
-          </button>
+          {/* Action Footer - Sticky */}
+          <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200">
+            <div className="max-w-7xl mx-auto flex gap-3">
+              {!isExpanded ? (
+                <button
+                  onClick={handleExplorePath}
+                  className={`flex-1 font-medium py-3 px-6 rounded-lg transition-colors ${
+                    visa.status === 'locked'
+                      ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+                  disabled={visa.status === 'locked'}
+                >
+                  {visa.status === 'locked' ? 'Improve Skills to Unlock' : 'Explore Full Details →'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsExpanded(false)}
+                  className="flex-1 font-medium py-3 px-6 rounded-lg transition-colors bg-gray-200 hover:bg-gray-300 text-gray-700"
+                >
+                  ← Show Less
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </>

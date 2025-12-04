@@ -9,6 +9,7 @@ interface VisaMapRedesignedProps {
   userProfile: UserProfile;
   selectedVisa?: string | null;
   onVisaSelect: (visaId: string) => void;
+  recommendedPathIds?: string[]; // 推薦路徑中的 visa IDs
 }
 
 /** 地圖上要顯示的簽證大分類（排除旅遊等） */
@@ -38,6 +39,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   userProfile,
   selectedVisa,
   onVisaSelect,
+  recommendedPathIds = [],
 }) => {
   // ========================================================================
   // 1. VISA_KNOWLEDGE_BASE is already a Record, convert to lowercase keys
@@ -230,6 +232,14 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   }, [selectedVisa, userProfile.currentVisa, adjacencyGraph]);
 
   // ========================================================================
+  // 7b. 推薦路徑的 highlight IDs
+  // ========================================================================
+  const recommendedPathSet = useMemo(() => {
+    if (!recommendedPathIds || recommendedPathIds.length === 0) return null;
+    return new Set(recommendedPathIds.map(id => id.toLowerCase()));
+  }, [recommendedPathIds]);
+
+  // ========================================================================
   // 8. layout：依 stage 排 X (column)，依 index + difficulty 排 Y
   // ========================================================================
   const getVisaPosition = (
@@ -314,7 +324,23 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
           const isOnPath =
             !highlightedPathIds ||
             (highlightedPathIds.has(visaId) && highlightedPathIds.has(nextId));
-          const opacity = isOnPath ? 0.7 : 0.15;
+          
+          // 檢查是否在推薦路徑上
+          const isOnRecommendedPath = 
+            recommendedPathSet && 
+            recommendedPathSet.has(visaId) && 
+            recommendedPathSet.has(nextId);
+          
+          let opacity = isOnPath ? 0.7 : 0.15;
+          let strokeColor = style.stroke;
+          let strokeWidth = style.strokeWidth;
+
+          // 推薦路徑的連線用更明顯的樣式
+          if (isOnRecommendedPath) {
+            strokeColor = '#a855f7'; // purple-500
+            strokeWidth = 4;
+            opacity = 0.9;
+          }
 
           lines.push(
             <line
@@ -323,7 +349,9 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
               y1={fromPos.y}
               x2={toPos.x - 40}
               y2={toPos.y}
-              {...style}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray={style.strokeDasharray}
               opacity={opacity}
             />
           );
@@ -378,6 +406,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
 
         const isSelected = selectedVisa?.toLowerCase() === visaId;
         const isCurrentVisa = currentVisaId === visaId;
+        const isOnRecommendedPath = recommendedPathSet?.has(visaId) ?? false;
 
         const isOnHighlightedPath =
           !highlightedPathIds || highlightedPathIds.has(visaId);
@@ -400,6 +429,11 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
                 isCurrentVisa
                   ? 'w-28 h-28 ring-2 ring-yellow-300 ring-opacity-70 shadow-2xl shadow-yellow-400/50'
                   : 'w-20 h-20'
+              }
+              ${
+                isOnRecommendedPath && !isSelected
+                  ? 'ring-4 ring-purple-400 ring-opacity-80 animate-pulse'
+                  : ''
               }
               ${
                 status === 'recommended'
@@ -429,10 +463,20 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
               </div>
             )}
 
+            {/* 推薦路徑標記 */}
+            {isOnRecommendedPath && !isCurrentVisa && (
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-purple-300 font-bold text-xs whitespace-nowrap">
+                🎯 Recommended
+              </div>
+            )}
+
             {/* Hover 小浮窗 */}
             <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 border border-slate-700">
               <div className="font-semibold">{visa.name}</div>
               <div className="text-slate-400 text-[11px]">{statusLabel}</div>
+              {isOnRecommendedPath && (
+                <div className="text-purple-400 text-[11px] mt-1">🎯 On recommended path</div>
+              )}
             </div>
           </button>
         );

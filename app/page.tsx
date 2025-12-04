@@ -9,10 +9,12 @@ import { Header } from '@/components/Header';
 import { QualificationsPanel } from '@/components/QualificationsPanel';
 import VisaMapRedesigned from "@/components/VisaMapRedesigned";
 import { VisaDetailPanel } from "@/components/VisaDetailPanel";
+import { RecommendedPathPanel } from "@/components/RecommendedPathPanel";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LegalDisclaimer } from "@/components/LegalDisclaimer";
 import { VISA_KNOWLEDGE_BASE, VisaDefinition, getVisaById } from '@/lib/visa-knowledge-base';
 import { getVisaRecommendations, getVisaRequirementStatus } from '@/lib/visa-matching-engine';
+import { getRecommendedPath } from '@/lib/path-recommendation';
 import { UserProfile } from '@/lib/types';
 
 /**
@@ -69,6 +71,18 @@ export default function Home() {
   const visaRecommendations = useMemo(
     () => visaProfile ? getVisaRecommendations(visaProfile) : {},
     [visaProfile]
+  );
+
+  // Get recommended path for user
+  const recommendedPath = useMemo(
+    () => visaProfile ? getRecommendedPath(visaProfile) : null,
+    [visaProfile]
+  );
+
+  // Extract visa IDs from recommended path for highlighting
+  const recommendedPathIds = useMemo(
+    () => recommendedPath ? recommendedPath.steps.map(step => step.visaId) : [],
+    [recommendedPath]
   );
 
   // Derive selected visa from visaKnowledgeBase with requirement status
@@ -146,7 +160,7 @@ export default function Home() {
       <>
         <Header />
         <main className="flex flex-col h-screen bg-white overflow-hidden relative">
-          {/* Map Container */}
+          {/* Top Section: Sidebar + Map */}
           <div className="flex flex-1 overflow-hidden">
             {/* Left Sidebar: Profile Qualifications Editor */}
             <QualificationsPanel
@@ -158,81 +172,90 @@ export default function Home() {
             />
 
             {/* Right Main Area: Hierarchical Visa Map */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative overflow-hidden">
               <VisaMapRedesigned
                 key={`visa-map-${refreshMapKey}`}
                 userProfile={visaProfile}
                 selectedVisa={selectedVisa}
                 onVisaSelect={handleVisaSelect}
+                recommendedPathIds={recommendedPathIds}
               />
             </div>
-
-            {/* Fixed Right Side: Visa Detail Panel */}
-            {isPanelOpen && selectedVisaData && selectedVisaData.requirementStatus && (
-              <VisaDetailPanel
-                isOpen={isPanelOpen}
-                visa={{
-                  id: selectedVisaData.visa.id,
-                  name: selectedVisaData.visa.name,
-                  emoji: selectedVisaData.visa.emoji || '📄',
-                  description: selectedVisaData.visa.shortDescription,
-                  fullDescription: selectedVisaData.visa.officialDescription,
-                  category: selectedVisaData.visa.category,
-                  status: selectedVisaData.status,
-                  timeHorizon: selectedVisaData.visa.timeHorizon,
-                  difficulty: selectedVisaData.visa.difficulty,
-                  requirements: {
-                    // Generate human-readable descriptions from eligibility rules
-                    education: selectedVisaData.requirementStatus.educationMet !== null
-                      ? selectedVisaData.visa.eligibilityRules
-                          .filter(r => r.field === 'educationLevel')
-                          .map(r => r.description)
-                          .join('. ') || "Bachelor's degree or equivalent"
-                      : undefined,
-                    experience: selectedVisaData.requirementStatus.experienceMet !== null
-                      ? selectedVisaData.visa.eligibilityRules
-                          .filter(r => r.field === 'yearsOfExperience')
-                          .map(r => r.description)
-                          .join('. ') || 'Work experience required'
-                      : undefined,
-                    english: selectedVisaData.requirementStatus.englishMet !== null
-                      ? selectedVisaData.visa.eligibilityRules
-                          .filter(r => r.field === 'englishProficiency')
-                          .map(r => r.description)
-                          .join('. ') || 'English proficiency required'
-                      : undefined,
-                    investment: selectedVisaData.requirementStatus.investmentMet !== null
-                      ? selectedVisaData.visa.eligibilityRules
-                          .filter(r => r.field === 'investmentAmount')
-                          .map(r => r.description)
-                          .join('. ') || 'Investment amount required'
-                      : undefined,
-                    citizenship: selectedVisaData.requirementStatus.citizenshipOk !== null
-                      ? selectedVisaData.visa.eligibilityRules
-                          .filter(r => r.field === 'citizenshipRestrictionCategory')
-                          .map(r => r.description)
-                          .join('. ') || 'Must be foreign national (non-U.S. citizen)'
-                      : undefined,
-                    previousVisa: selectedVisaData.requirementStatus.previousVisaMet !== null
-                      ? selectedVisaData.visa.eligibilityRules
-                          .filter(r => r.field === 'previousVisa')
-                          .map(r => r.description)
-                          .join('. ') || 'Previous visa required'
-                      : undefined,
-                  },
-                }}
-                userMeets={{
-                  education: selectedVisaData.requirementStatus.educationMet ?? undefined,
-                  experience: selectedVisaData.requirementStatus.experienceMet ?? undefined,
-                  english: selectedVisaData.requirementStatus.englishMet ?? undefined,
-                  investment: selectedVisaData.requirementStatus.investmentMet ?? undefined,
-                  citizenship: selectedVisaData.requirementStatus.citizenshipOk ?? undefined,
-                  previousVisa: selectedVisaData.requirementStatus.previousVisaMet ?? undefined,
-                }}
-                onClose={handleClosePanel}
-              />
-            )}
           </div>
+
+          {/* Bottom Section: Recommended Path (if available and no visa selected) */}
+          {!isPanelOpen && recommendedPath && (
+            <RecommendedPathPanel
+              path={recommendedPath}
+              onVisaSelect={handleVisaSelect}
+            />
+          )}
+
+          {/* Bottom Section: Visa Detail Panel (when visa selected) */}
+          {isPanelOpen && selectedVisaData && selectedVisaData.requirementStatus && (
+            <VisaDetailPanel
+              isOpen={isPanelOpen}
+              visa={{
+                id: selectedVisaData.visa.id,
+                name: selectedVisaData.visa.name,
+                emoji: selectedVisaData.visa.emoji || '📄',
+                description: selectedVisaData.visa.shortDescription,
+                fullDescription: selectedVisaData.visa.officialDescription,
+                category: selectedVisaData.visa.category,
+                status: selectedVisaData.status,
+                timeHorizon: selectedVisaData.visa.timeHorizon,
+                difficulty: selectedVisaData.visa.difficulty,
+                requirements: {
+                  // Generate human-readable descriptions from eligibility rules
+                  education: selectedVisaData.requirementStatus.educationMet !== null
+                    ? selectedVisaData.visa.eligibilityRules
+                        .filter(r => r.field === 'educationLevel')
+                        .map(r => r.description)
+                        .join('. ') || "Bachelor's degree or equivalent"
+                    : undefined,
+                  experience: selectedVisaData.requirementStatus.experienceMet !== null
+                    ? selectedVisaData.visa.eligibilityRules
+                        .filter(r => r.field === 'yearsOfExperience')
+                        .map(r => r.description)
+                        .join('. ') || 'Work experience required'
+                    : undefined,
+                  english: selectedVisaData.requirementStatus.englishMet !== null
+                    ? selectedVisaData.visa.eligibilityRules
+                        .filter(r => r.field === 'englishProficiency')
+                        .map(r => r.description)
+                        .join('. ') || 'English proficiency required'
+                    : undefined,
+                  investment: selectedVisaData.requirementStatus.investmentMet !== null
+                    ? selectedVisaData.visa.eligibilityRules
+                        .filter(r => r.field === 'investmentAmount')
+                        .map(r => r.description)
+                        .join('. ') || 'Investment amount required'
+                    : undefined,
+                  citizenship: selectedVisaData.requirementStatus.citizenshipOk !== null
+                    ? selectedVisaData.visa.eligibilityRules
+                        .filter(r => r.field === 'citizenshipRestrictionCategory')
+                        .map(r => r.description)
+                        .join('. ') || 'Must be foreign national (non-U.S. citizen)'
+                    : undefined,
+                  previousVisa: selectedVisaData.requirementStatus.previousVisaMet !== null
+                    ? selectedVisaData.visa.eligibilityRules
+                        .filter(r => r.field === 'previousVisa')
+                        .map(r => r.description)
+                        .join('. ') || 'Previous visa required'
+                    : undefined,
+                },
+              }}
+              userMeets={{
+                education: selectedVisaData.requirementStatus.educationMet ?? undefined,
+                experience: selectedVisaData.requirementStatus.experienceMet ?? undefined,
+                english: selectedVisaData.requirementStatus.englishMet ?? undefined,
+                investment: selectedVisaData.requirementStatus.investmentMet ?? undefined,
+                citizenship: selectedVisaData.requirementStatus.citizenshipOk ?? undefined,
+                previousVisa: selectedVisaData.requirementStatus.previousVisaMet ?? undefined,
+              }}
+              onClose={handleClosePanel}
+            />
+          )}
 
           {/* Legal Disclaimer Footer */}
           <LegalDisclaimer />
