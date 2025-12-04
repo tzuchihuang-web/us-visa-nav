@@ -91,9 +91,9 @@ export default function OnboardingPage() {
     <div className={styles.container}>
       <div className={styles.card}>
         {/* Header with progress */}
-        <div className={styles.header}>
-          <h1 className={styles.title}>🦅 Welcome to US Visa Navigator</h1>
-          <p className={styles.subtitle}>
+          <div className={styles.header}>
+            <h1 className={styles.title}>WELCOME TO US VISA NAVIGATOR</h1>
+            <p className={styles.subtitle}>
             Let's learn about your visa journey in just a few questions
           </p>
           <div className={styles.progressBar}>

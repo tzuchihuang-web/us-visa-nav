@@ -425,7 +425,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
             key={visaId}
             onClick={() => handleNodeClick(visaId)}
             className={`absolute bubble-node flex flex-col items-center justify-center font-black text-center transition-all duration-300 cursor-pointer group
-              ${isSelected ? 'scale-110 z-30' : 'hover:scale-105 z-10'}
+              ${isSelected ? 'scale-110 z-30 !border-4 !border-black' : 'hover:scale-105 z-10'}
               ${
                 isCurrentVisa
                   ? 'w-32 h-32 ring-3 ring-yellow-400 shadow-2xl'
@@ -442,6 +442,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
               transform: 'translate(-50%, -50%)',
               opacity: isDimmed ? 0.3 : 1,
               color: status === 'locked' ? '#999999' : '#000000',
+              boxShadow: isSelected ? '0 8px 32px rgba(0, 0, 0, 0.3)' : undefined,
             }}
           >
             {/* Visa code label */}

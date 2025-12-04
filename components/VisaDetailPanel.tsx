@@ -102,20 +102,20 @@ export function VisaDetailPanel({
     <>
       {/* Bottom Panel - Inside Map area */}
       <div
-        className={`absolute bottom-0 left-0 right-0 z-40 bg-white border-t-2 shadow-2xl transition-all duration-300 ${
+        className={`absolute bottom-4 left-4 right-4 z-50 glass-panel border-t-2 shadow-2xl transition-all duration-300 ${
           config.border
-        } ${isExpanded ? 'h-[70vh]' : 'h-auto max-h-[40vh]'} overflow-hidden`}
+        } ${isExpanded ? 'h-[65vh]' : 'h-auto max-h-[35vh]'} overflow-hidden`}
       >
         {/* Panel Content */}
         <div className="h-full flex flex-col">
           {/* Header - Always visible */}
-          <div className={`${config.bg} border-b ${config.border} p-6 flex-shrink-0`}>
+          <div className={`${config.bg} border-b ${config.border} p-4 flex-shrink-0`}>
             <div className="max-w-7xl mx-auto">
-                  <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-4">
+                  <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
                   <div>
-                    <h2 className="text-3xl font-black text-black">{visa.name}</h2>
-                    <p className="text-sm text-gray-600 mt-1 font-semibold uppercase">{visa.category}</p>
+                    <h2 className="text-xl font-black text-black">{visa.name}</h2>
+                    <p className="text-xs text-gray-600 mt-1 font-semibold uppercase">{visa.category}</p>
                   </div>
                 </div>
                 <button
@@ -128,13 +128,13 @@ export function VisaDetailPanel({
               </div>
 
               {/* Status Badge & Meta Info */}
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className={`px-4 py-1.5 rounded-full text-xs ${config.badge}`}>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className={`px-3 py-1 rounded-full text-xs ${config.badge}`}>
                   {config.text}
                 </div>
 
                 {visa.timeHorizon && (
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-1.5 text-xs">
                     <span className="text-gray-900 font-bold">TIME:</span>
                     <span className="text-gray-700 font-semibold">
                       {visa.timeHorizon === 'short' && '6mo-1yr'}
@@ -145,7 +145,7 @@ export function VisaDetailPanel({
                 )}
 
                 {visa.difficulty && (
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-1.5 text-xs">
                     <span className="text-gray-900 font-bold">DIFFICULTY:</span>
                     <span className="text-gray-700 font-semibold">
                       {visa.difficulty === 1 && 'Easy'}
@@ -159,13 +159,13 @@ export function VisaDetailPanel({
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto" style={{ maxHeight: isExpanded ? 'calc(70vh - 180px)' : 'calc(40vh - 180px)' }}>
-            <div className="max-w-7xl mx-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto" style={{ maxHeight: isExpanded ? 'calc(65vh - 160px)' : 'calc(35vh - 160px)' }}>
+            <div className="max-w-7xl mx-auto p-3 space-y-3">
               {/* Description */}
               {visa.fullDescription && (
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Overview</h3>
-                  <p className="text-sm text-gray-700 leading-relaxed">
+                  <h3 className="font-bold text-gray-900 mb-1.5 text-sm">Overview</h3>
+                  <p className="text-xs text-gray-700 leading-relaxed">
                     {visa.fullDescription}
                   </p>
                 </div>
@@ -174,7 +174,7 @@ export function VisaDetailPanel({
               {/* Requirements */}
               {visa.requirements && (
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Requirements</h3>
+                  <h3 className="font-bold text-gray-900 mb-1.5 text-sm">Requirements</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {visa.requirements.education && (
                   <div className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
@@ -496,26 +496,26 @@ export function VisaDetailPanel({
           </div>
 
           {/* Action Footer - Sticky */}
-          <div className="flex-shrink-0 p-3 bg-white border-t border-gray-200 shadow-lg">
-            <div className="max-w-7xl mx-auto flex gap-3">
+          <div className="flex-shrink-0 p-3 glass-panel border-t border-gray-100 shadow-lg">
+            <div className="max-w-7xl mx-auto flex gap-2">
               {!isExpanded ? (
                 <button
                   onClick={handleExplorePath}
-                  className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors text-sm ${
+                  className={`flex-1 font-black py-2 px-3 rounded-lg transition-all text-xs ${
                     visa.status === 'locked'
                       ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-black hover:bg-gray-800 text-white'
                   }`}
                   disabled={visa.status === 'locked'}
                 >
-                  {visa.status === 'locked' ? 'Improve Skills to Unlock' : 'Explore Full Details →'}
+                  {visa.status === 'locked' ? 'IMPROVE SKILLS TO UNLOCK' : 'EXPLORE FULL DETAILS →'}
                 </button>
               ) : (
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="flex-1 font-medium py-2 px-4 rounded-lg transition-colors text-sm bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  className="flex-1 font-black py-2 px-3 rounded-lg transition-all text-xs glass-button"
                 >
-                  ← Show Less
+                  ← SHOW LESS
                 </button>
               )}
             </div>

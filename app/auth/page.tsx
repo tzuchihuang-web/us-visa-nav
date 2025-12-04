@@ -69,32 +69,32 @@ export default function AuthPage() {
   const displayError = localError || error;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
-      <Card className="w-full max-w-md shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4">
+      <Card className="w-full max-w-md glass-panel border-2">
         <div className="p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              🦅 US Visa Navigator
+            <h1 className="text-3xl font-black text-black mb-2">
+              US VISA NAVIGATOR
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-700 font-semibold">
               {isSignUp ? "Create your account" : "Welcome back"}
             </p>
           </div>
 
           {/* Error Message */}
           {displayError && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-700">{displayError}</p>
+            <div className="mb-6 p-4 glass-panel border-red-200 rounded-xl">
+              <p className="text-sm text-red-700 font-semibold">{displayError}</p>
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name field (sign up only) */}
             {isSignUp && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-black text-black mb-2 uppercase tracking-wide">
                   Full Name
                 </label>
                 <Input
@@ -103,14 +103,14 @@ export default function AuthPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={loading}
-                  className="w-full"
+                  className="w-full font-semibold"
                 />
               </div>
             )}
 
             {/* Email field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-black text-black mb-2 uppercase tracking-wide">
                 Email Address
               </label>
               <Input
@@ -119,13 +119,13 @@ export default function AuthPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                className="w-full"
+                className="w-full font-semibold"
               />
             </div>
 
             {/* Password field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-black text-black mb-2 uppercase tracking-wide">
                 Password
               </label>
               <Input
@@ -134,14 +134,14 @@ export default function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-                className="w-full"
+                className="w-full font-semibold"
               />
             </div>
 
             {/* Confirm Password field (sign up only) */}
             {isSignUp && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-black text-black mb-2 uppercase tracking-wide">
                   Confirm Password
                 </label>
                 <Input
@@ -150,7 +150,7 @@ export default function AuthPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={loading}
-                  className="w-full"
+                  className="w-full font-semibold"
                 />
               </div>
             )}
@@ -159,19 +159,19 @@ export default function AuthPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2"
+              className="w-full bg-black hover:bg-gray-800 text-white font-black py-3 rounded-xl mt-6"
             >
               {loading
-                ? "Loading..."
+                ? "LOADING..."
                 : isSignUp
-                  ? "Sign Up"
-                  : "Sign In"}
+                  ? "SIGN UP"
+                  : "SIGN IN"}
             </Button>
           </form>
 
           {/* Toggle between sign up and sign in */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-700 font-semibold">
               {isSignUp ? "Already have an account?" : "Don't have an account?"}
               <button
                 type="button"
@@ -183,26 +183,26 @@ export default function AuthPage() {
                   setConfirmPassword("");
                   setName("");
                 }}
-                className="ml-2 text-blue-600 hover:text-blue-700 font-medium underline"
+                className="ml-2 text-black hover:text-gray-700 font-black underline"
               >
-                {isSignUp ? "Sign In" : "Sign Up"}
+                {isSignUp ? "SIGN IN" : "SIGN UP"}
               </button>
             </p>
           </div>
 
           {/* Demo info */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-xs text-gray-500 text-center mb-3 font-medium">
+          <div className="mt-6 pt-6 border-t border-gray-100">
+            <p className="text-xs text-black text-center mb-3 font-black uppercase tracking-wide">
               Demo Credentials
             </p>
-            <div className="bg-gray-50 p-3 rounded-lg space-y-1 text-xs text-gray-600">
+            <div className="glass-panel p-4 rounded-xl space-y-1 text-xs text-gray-700 font-semibold">
               <p>
-                <span className="font-medium">Email:</span> demo@example.com
+                <span className="font-black">Email:</span> demo@example.com
               </p>
               <p>
-                <span className="font-medium">Password:</span> demo123456
+                <span className="font-black">Password:</span> demo123456
               </p>
-              <p className="text-gray-500 mt-2">
+              <p className="text-gray-600 mt-2">
                 (Create your own account or use demo credentials)
               </p>
             </div>
