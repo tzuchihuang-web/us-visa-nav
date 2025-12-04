@@ -424,25 +424,26 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
           <button
             key={visaId}
             onClick={() => handleNodeClick(visaId)}
-            className={`absolute bubble-node flex flex-col items-center justify-center font-black text-center transition-all duration-300 cursor-pointer group
+            className={`absolute flex flex-col items-center justify-center font-black text-center transition-all duration-300 cursor-pointer group
               ${isSelected ? 'scale-110 z-30 !border-4 !border-black' : 'hover:scale-105 z-10'}
               ${
                 isCurrentVisa
-                  ? 'w-32 h-32 ring-3 ring-yellow-400 shadow-2xl'
+                  ? 'w-32 h-32 shadow-2xl'
                   : 'w-24 h-24'
               }
-              ${
-                isOnRecommendedPath && !isSelected
-                  ? 'ring-3 ring-purple-400 animate-pulse'
-                  : ''
-              }`}
+              ${isOnRecommendedPath && !isCurrentVisa && !isSelected ? '' : 'bubble-node'}`}
             style={{
               left: `${pos.x}px`,
               top: `${pos.y}px`,
               transform: 'translate(-50%, -50%)',
               opacity: isDimmed ? 0.3 : 1,
-              color: status === 'locked' ? '#999999' : '#000000',
-              boxShadow: isSelected ? '0 8px 32px rgba(0, 0, 0, 0.3)' : undefined,
+              color: status === 'locked' ? '#999999' : (isOnRecommendedPath && !isCurrentVisa && !isSelected ? '#ffffff' : '#000000'),
+              boxShadow: isSelected ? '0 8px 32px rgba(0, 0, 0, 0.3)' : (isOnRecommendedPath && !isCurrentVisa ? '0 6px 24px rgba(139, 92, 246, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.3)' : undefined),
+              background: isOnRecommendedPath && !isCurrentVisa && !isSelected 
+                ? 'linear-gradient(135deg, rgba(167, 139, 250, 0.95) 0%, rgba(139, 92, 246, 0.9) 100%)'
+                : undefined,
+              backdropFilter: isOnRecommendedPath && !isCurrentVisa && !isSelected ? 'blur(12px)' : undefined,
+              border: isOnRecommendedPath && !isCurrentVisa && !isSelected ? '3px solid rgba(255, 255, 255, 0.5)' : undefined,
             }}
           >
             {/* Visa code label */}
@@ -450,17 +451,25 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
               {visa.code ?? visa.id.toUpperCase()}
             </div>
 
-            {/* "You are here" 標籤 */}
+            {/* "You are currently here" 標籤 */}
             {isCurrentVisa && (
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 font-black text-xs whitespace-nowrap text-yellow-700 px-2.5 py-1 rounded-lg bg-yellow-100 backdrop-blur border-2 border-yellow-300 shadow-lg z-50">
-                YOU ARE HERE
+              <div className="absolute -top-12 left-1/2 -translate-x-1/2 font-black text-[11px] whitespace-nowrap text-white px-3 py-1.5 rounded-full shadow-xl" style={{
+                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                zIndex: 9999,
+                border: '2px solid rgba(255, 255, 255, 0.8)',
+              }}>
+                YOU ARE CURRENTLY HERE
               </div>
             )}
 
             {/* 推薦路徑標記 */}
             {isOnRecommendedPath && !isCurrentVisa && (
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 font-black text-xs whitespace-nowrap text-purple-700 px-2.5 py-1 rounded-lg bg-purple-100 backdrop-blur border-2 border-purple-300 shadow-lg z-50">
-                RECOMMENDED
+              <div className="absolute -top-12 left-1/2 -translate-x-1/2 font-black text-[11px] whitespace-nowrap text-white px-3 py-1.5 rounded-full shadow-xl" style={{
+                background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
+                zIndex: 9999,
+                border: '2px solid rgba(255, 255, 255, 0.8)',
+              }}>
+                RECOMMENDED PATH
               </div>
             )}
 
@@ -486,22 +495,38 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   const hasCurrent = !!userProfile.currentVisa;
 
   return (
-    <div className="relative w-full h-full bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
-      {/* Legend 移到右下角 - 極簡玻璃風格 */}
-      <div className="absolute right-6 bottom-6 glass-panel p-4 text-xs z-40">
-        <div className="font-black mb-3 text-black text-sm">PROFILE MATCH</div>
-        <div className="space-y-2">
+    <div className="relative w-full h-full rounded-3xl overflow-hidden border border-purple-100 shadow-lg" style={{
+      background: 'linear-gradient(135deg, #faf9ff 0%, #f5f3ff 30%, #fdf4ff 60%, #fef3f7 100%)',
+    }}>
+      {/* Legend 移到右下角 - 更新樣式對應Map */}
+      <div className="absolute right-6 bottom-6 glass-panel p-5 text-xs z-40 min-w-[260px]">
+        <div className="font-black mb-4 text-black text-sm">STATUS LEGEND</div>
+        <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 rounded-full bubble-node"></div>
-            <span className="font-semibold text-gray-700">May be eligible (90%+)</span>
+            <div className="w-5 h-5 rounded-full bubble-node relative flex items-center justify-center" style={{border: '4px solid black', boxShadow: '0 4px 12px rgba(0,0,0,0.3)'}}>
+              <div className="text-[8px] font-black">F1</div>
+            </div>
+            <span className="font-semibold text-gray-800 text-[11px]">Current visa (selected)</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 rounded-full bubble-node opacity-70"></div>
-            <span className="font-semibold text-gray-700">Could be a path (50%+)</span>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white font-black text-[8px]" style={{
+              background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
+              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.5)',
+              border: '2px solid rgba(255, 255, 255, 0.5)',
+            }}>H1B</div>
+            <span className="font-semibold text-gray-800 text-[11px]">Recommended path</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 rounded-full bg-gray-300"></div>
-            <span className="font-semibold text-gray-500">Strengthen skills first</span>
+            <div className="w-5 h-5 rounded-full bubble-node flex items-center justify-center text-[8px] font-black">EB</div>
+            <span className="font-semibold text-gray-700 text-[11px]">Eligible (90%+ match)</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full bubble-node opacity-60 flex items-center justify-center text-[8px] font-black">O1</div>
+            <span className="font-semibold text-gray-600 text-[11px]">Possible path (50%+)</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full bg-gray-300 opacity-40 flex items-center justify-center text-[8px] font-semibold text-gray-500">EB5</div>
+            <span className="font-semibold text-gray-500 text-[11px]">Need more qualifications</span>
           </div>
         </div>
       </div>
