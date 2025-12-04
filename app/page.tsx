@@ -12,6 +12,7 @@ import { VisaDetailPanel } from "@/components/VisaDetailPanel";
 import { RecommendedPathPanel } from "@/components/RecommendedPathPanel";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LegalDisclaimer } from "@/components/LegalDisclaimer";
+import { BubbleBackground } from '@/components/GlassBubble';
 import { VISA_KNOWLEDGE_BASE, VisaDefinition, getVisaById } from '@/lib/visa-knowledge-base';
 import { getVisaRecommendations, getVisaRequirementStatus } from '@/lib/visa-matching-engine';
 import { getRecommendedPath } from '@/lib/path-recommendation';
@@ -159,6 +160,9 @@ export default function Home() {
   return (
     <ProtectedRoute>
       <>
+        {/* 玻璃泡泡背景 */}
+        <BubbleBackground count={10} />
+        
         <Header />
         <main className="flex flex-col h-screen bg-white overflow-hidden relative">
           {/* Top Section: Sidebar + Map */}
@@ -186,10 +190,9 @@ export default function Home() {
               {!isPanelOpen && recommendedPath && !isRecommendedPathVisible && (
                 <button
                   onClick={() => setIsRecommendedPathVisible(true)}
-                  className="absolute bottom-6 left-6 z-30 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+                  className="absolute bottom-6 left-6 z-30 glass-button py-3 px-6 shadow-lg hover:shadow-xl transition-all duration-200"
                 >
-                  <span className="text-lg">🎯</span>
-                  <span>Show Recommended Path</span>
+                  <span className="font-black">SHOW RECOMMENDED PATH</span>
                 </button>
               )}
 

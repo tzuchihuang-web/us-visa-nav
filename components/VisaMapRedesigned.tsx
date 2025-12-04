@@ -268,14 +268,15 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   };
 
   const getLineStyle = (status: 'recommended' | 'available' | 'locked') => {
+    // 極簡風格 - 統一淺灰色連線
     switch (status) {
       case 'recommended':
-        return { stroke: '#22c55e', strokeWidth: 3, strokeDasharray: 'none' };
+        return { stroke: '#d1d5db', strokeWidth: 2, strokeDasharray: 'none' }; // gray-300
       case 'available':
-        return { stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: 'none' };
+        return { stroke: '#e5e7eb', strokeWidth: 2, strokeDasharray: 'none' }; // gray-200
       case 'locked':
       default:
-        return { stroke: '#9ca3af', strokeWidth: 2, strokeDasharray: '5,5' };
+        return { stroke: '#f3f4f6', strokeWidth: 1, strokeDasharray: '4,4' }; // gray-100
     }
   };
 
@@ -331,15 +332,15 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
             recommendedPathSet.has(visaId) && 
             recommendedPathSet.has(nextId);
           
-          let opacity = isOnPath ? 0.7 : 0.15;
+          let opacity = isOnPath ? 0.6 : 0.2;
           let strokeColor = style.stroke;
           let strokeWidth = style.strokeWidth;
 
-          // 推薦路徑的連線用更明顯的樣式
+          // 推薦路徑的連線用黑色實線
           if (isOnRecommendedPath) {
-            strokeColor = '#a855f7'; // purple-500
-            strokeWidth = 4;
-            opacity = 0.9;
+            strokeColor = '#000000'; // 黑色
+            strokeWidth = 2.5;
+            opacity = 0.8;
           }
 
           lines.push(
@@ -423,59 +424,51 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
           <button
             key={visaId}
             onClick={() => handleNodeClick(visaId)}
-            className={`absolute rounded-full flex flex-col items-center justify-center font-bold text-center transition-all duration-200 cursor-pointer group
-              ${isSelected ? 'ring-2 ring-yellow-400 scale-110 z-30' : 'hover:scale-105 z-10'}
+            className={`absolute bubble-node flex flex-col items-center justify-center font-black text-center transition-all duration-300 cursor-pointer group
+              ${isSelected ? 'scale-110 z-30' : 'hover:scale-105 z-10'}
               ${
                 isCurrentVisa
-                  ? 'w-28 h-28 ring-2 ring-yellow-300 ring-opacity-70 shadow-2xl shadow-yellow-400/50'
-                  : 'w-20 h-20'
+                  ? 'w-32 h-32 ring-3 ring-yellow-400 shadow-2xl'
+                  : 'w-24 h-24'
               }
               ${
                 isOnRecommendedPath && !isSelected
-                  ? 'ring-4 ring-purple-400 ring-opacity-80 animate-pulse'
+                  ? 'ring-3 ring-purple-400 animate-pulse'
                   : ''
-              }
-              ${
-                status === 'recommended'
-                  ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg shadow-green-500/50'
-                  : status === 'available'
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'bg-gradient-to-br from-gray-600 to-gray-700 text-gray-300 shadow-lg shadow-gray-600/30'
               }`}
             style={{
               left: `${pos.x}px`,
               top: `${pos.y}px`,
               transform: 'translate(-50%, -50%)',
-              opacity: isDimmed ? 0.25 : 1,
+              opacity: isDimmed ? 0.3 : 1,
+              color: status === 'locked' ? '#999999' : '#000000',
             }}
           >
-            <div className="text-2xl">
-              {visa.emoji ?? '🛂'}
-            </div>
-            <div className="text-xs font-semibold leading-tight">
+            {/* Visa code label */}
+            <div className="text-sm font-black leading-tight tracking-tight relative z-10">
               {visa.code ?? visa.id.toUpperCase()}
             </div>
 
             {/* "You are here" 標籤 */}
             {isCurrentVisa && (
-              <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-yellow-300 font-bold text-xs whitespace-nowrap">
-                ⭐ You are here
+              <div className="absolute -top-9 left-1/2 -translate-x-1/2 font-black text-xs whitespace-nowrap text-yellow-600 px-2 py-1 rounded-lg bg-white/80 backdrop-blur">
+                YOU ARE HERE
               </div>
             )}
 
             {/* 推薦路徑標記 */}
             {isOnRecommendedPath && !isCurrentVisa && (
-              <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-purple-300 font-bold text-xs whitespace-nowrap">
-                🎯 Recommended
+              <div className="absolute -top-9 left-1/2 -translate-x-1/2 font-black text-xs whitespace-nowrap text-purple-600 px-2 py-1 rounded-lg bg-white/80 backdrop-blur">
+                RECOMMENDED
               </div>
             )}
 
-            {/* Hover 小浮窗 */}
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 border border-slate-700">
-              <div className="font-semibold">{visa.name}</div>
-              <div className="text-slate-400 text-[11px]">{statusLabel}</div>
+            {/* Hover 小浮窗 - 玻璃質感 */}
+            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 glass-panel text-black text-xs px-3 py-2 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity duration-200">
+              <div className="font-black">{visa.name}</div>
+              <div className="font-normal text-gray-600 text-[11px]">{statusLabel}</div>
               {isOnRecommendedPath && (
-                <div className="text-purple-400 text-[11px] mt-1">🎯 On recommended path</div>
+                <div className="text-purple-600 font-bold text-[11px] mt-1">On recommended path</div>
               )}
             </div>
           </button>
@@ -492,41 +485,41 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   const hasCurrent = !!userProfile.currentVisa;
 
   return (
-    <div className="relative w-full h-full bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-lg overflow-hidden">
-      {/* Legend 移到右下角，不擋標題 */}
-      <div className="absolute right-4 bottom-4 bg-slate-800/80 backdrop-blur rounded-lg p-3 text-xs z-40 border border-slate-700">
-        <div className="font-semibold mb-2 text-slate-200">Your Profile Match</div>
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-slate-300">May be eligible (90%+)</span>
+    <div className="relative w-full h-full bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
+      {/* Legend 移到右下角 - 極簡玻璃風格 */}
+      <div className="absolute right-6 bottom-6 glass-panel p-4 text-xs z-40">
+        <div className="font-black mb-3 text-black text-sm">PROFILE MATCH</div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="w-4 h-4 rounded-full bubble-node"></div>
+            <span className="font-semibold text-gray-700">May be eligible (90%+)</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span className="text-slate-300">Could be a path (50%+)</span>
+          <div className="flex items-center gap-3">
+            <div className="w-4 h-4 rounded-full bubble-node opacity-70"></div>
+            <span className="font-semibold text-gray-700">Could be a path (50%+)</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-            <span className="text-slate-300">Strengthen skills first</span>
+          <div className="flex items-center gap-3">
+            <div className="w-4 h-4 rounded-full bg-gray-300"></div>
+            <span className="font-semibold text-gray-500">Strengthen skills first</span>
           </div>
         </div>
       </div>
 
-      {/* 上方欄位標題：對應 stage (current/next/future/long_term) */}
-      <div className="absolute top-4 left-0 right-0 flex justify-start gap-[140px] px-8 text-xs text-slate-400 font-semibold pointer-events-none">
-        <div>Current</div>
-        <div>Next Steps</div>
-        <div>Future Options</div>
-        <div>Long-term Goals</div>
+      {/* 上方欄位標題 - 極簡粗體黑字 */}
+      <div className="absolute top-8 left-0 right-0 flex justify-start gap-[140px] px-10 text-sm text-black font-black pointer-events-none tracking-tight">
+        <div>CURRENT</div>
+        <div>NEXT STEPS</div>
+        <div>FUTURE OPTIONS</div>
+        <div>LONG-TERM GOALS</div>
       </div>
 
-      {/* SVG edge canvas */}
+      {/* SVG edge canvas - 淺灰色連線 */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
         {renderConnections()}
       </svg>
 
       {/* Nodes：往下 offset 一點避免頂到 */}
-      <div className="relative w-full h-full pt-16">
+      <div className="relative w-full h-full pt-20">
         {renderVisaNodes()}
       </div>
     </div>

@@ -103,42 +103,41 @@ export function QualificationsPanel({
   const hasChanges = Object.keys(localChanges).length > 0;
 
   return (
-    <div className="w-80 border-r border-gray-200 overflow-y-auto bg-gray-50 flex flex-col">
+    <div className="w-80 border-r border-gray-100 overflow-y-auto bg-white flex flex-col shadow-sm">
       {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
-        <h2 className="text-lg font-semibold text-gray-900">Your Profile</h2>
-        <p className="text-xs text-gray-600 mt-1">
-          {hasChanges && '✏️ You have unsaved changes'}
-          {!hasChanges && '✓ Profile saved'}
+      <div className="sticky top-0 glass-panel border-b border-gray-100 p-6 z-10">
+        <h2 className="text-xl font-black text-black">YOUR PROFILE</h2>
+        <p className="text-xs text-gray-600 mt-2 font-semibold">
+          {hasChanges && 'UNSAVED CHANGES'}
+          {!hasChanges && 'PROFILE SAVED'}
         </p>
       </div>
 
       {/* Success Message */}
       {saveSuccess && (
-        <div className="mx-4 mt-4 p-3 bg-green-50 border border-green-200 rounded text-xs text-green-700 flex items-center gap-2">
-          <span>✓</span>
+        <div className="mx-4 mt-4 p-3 glass-panel border-green-200 text-xs text-green-700 flex items-center gap-2 font-semibold">
           <span>Changes saved successfully!</span>
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="mx-4 mt-4 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+        <div className="mx-4 mt-4 p-3 glass-panel border-red-200 text-xs text-red-700 font-semibold">
           {error}
         </div>
       )}
 
       {/* Form */}
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+      <div className="flex-1 p-6 space-y-6 overflow-y-auto">
         {/* Current Visa */}
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
+          <label className="block text-xs font-black text-gray-900 mb-2 uppercase tracking-wide">
             Current Visa Status
           </label>
           <select
             value={displayProfile.currentVisa || ''}
             onChange={(e) => handleFieldChange('currentVisa', e.target.value || null)}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black font-semibold"
           >
             <option value="">None (select if no current visa)</option>
             <option value="f1">F-1 Student Visa</option>
@@ -157,13 +156,13 @@ export function QualificationsPanel({
 
         {/* Education Level */}
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
+          <label className="block text-xs font-black text-gray-900 mb-2 uppercase tracking-wide">
             Education Level
           </label>
           <select
             value={displayProfile.educationLevel || 'other'}
             onChange={(e) => handleFieldChange('educationLevel', e.target.value)}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black font-semibold"
           >
             <option value="other">Select...</option>
             <option value="high_school">High School</option>
@@ -175,7 +174,7 @@ export function QualificationsPanel({
 
         {/* Years of Experience */}
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
+          <label className="block text-xs font-black text-gray-900 mb-2 uppercase tracking-wide">
             Work Experience (Years)
           </label>
           <input
@@ -184,13 +183,13 @@ export function QualificationsPanel({
             max="60"
             value={displayProfile.yearsOfExperience || 0}
             onChange={(e) => handleFieldChange('yearsOfExperience', parseInt(e.target.value) || 0)}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black font-semibold"
           />
         </div>
 
         {/* Field of Work */}
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
+          <label className="block text-xs font-black text-gray-900 mb-2 uppercase tracking-wide">
             Field of Work
           </label>
           <input
@@ -198,7 +197,7 @@ export function QualificationsPanel({
             value={displayProfile.fieldOfWork || ''}
             onChange={(e) => handleFieldChange('fieldOfWork', e.target.value)}
             placeholder="e.g., Technology, Finance"
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black font-semibold"
           />
         </div>
 
@@ -221,43 +220,43 @@ export function QualificationsPanel({
 
         {/* English Proficiency */}
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
+          <label className="block text-xs font-black text-gray-900 mb-2 uppercase tracking-wide">
             English Proficiency
           </label>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <input
               type="range"
               min="0"
               max="5"
               value={displayProfile.englishProficiency || 0}
               onChange={(e) => handleFieldChange('englishProficiency', parseInt(e.target.value))}
-              className="w-full"
+              className="w-full accent-black"
             />
-            <div className="flex justify-between text-xs text-gray-600">
-              <span>0: None</span>
-              <span>3: Intermediate</span>
-              <span>5: Fluent</span>
+            <div className="flex justify-between text-xs text-gray-500 font-semibold">
+              <span>NONE</span>
+              <span>INTERMEDIATE</span>
+              <span>FLUENT</span>
             </div>
-            <p className="text-xs bg-blue-50 p-2 rounded text-blue-700">
-              Current: {['None', 'Basic', 'Limited', 'Intermediate', 'Advanced', 'Fluent'][displayProfile.englishProficiency || 0]}
+            <p className="text-xs glass-panel p-3 text-black font-bold">
+              CURRENT: {['NONE', 'BASIC', 'LIMITED', 'INTERMEDIATE', 'ADVANCED', 'FLUENT'][displayProfile.englishProficiency || 0]}
             </p>
           </div>
         </div>
 
         {/* Investment Amount */}
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
+          <label className="block text-xs font-black text-gray-900 mb-2 uppercase tracking-wide">
             Investment Capacity (USD)
           </label>
           <div className="relative">
-            <span className="absolute left-2 top-1 text-sm text-gray-600">$</span>
+            <span className="absolute left-3 top-2.5 text-sm text-gray-600 font-bold">$</span>
             <input
               type="number"
               min="0"
               value={displayProfile.investmentAmount || 0}
               onChange={(e) => handleFieldChange('investmentAmount', parseFloat(e.target.value) || 0)}
               placeholder="0"
-              className="w-full pl-6 pr-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black font-semibold"
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
@@ -267,20 +266,20 @@ export function QualificationsPanel({
       </div>
 
       {/* Save Button */}
-      <div className="border-t border-gray-200 bg-white p-4 space-y-3">
+      <div className="border-t border-gray-100 glass-panel p-6 space-y-3">
         <button
           onClick={handleSaveChanges}
           disabled={!hasChanges || isSaving}
-          className={`w-full py-2 px-3 rounded font-medium text-sm transition ${
+          className={`w-full py-3 px-4 rounded-xl font-black text-sm transition ${
             hasChanges && !isSaving
-              ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+              ? 'bg-black text-white hover:bg-gray-800 cursor-pointer'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}
         >
-          {isSaving ? '💾 Saving...' : 'Save Changes'}
+          {isSaving ? 'SAVING...' : 'SAVE CHANGES'}
         </button>
-        <p className="text-xs text-gray-600 leading-relaxed">
-          <span className="font-semibold">💡 Tip:</span> Click "Save Changes" to update your profile and see personalized visa recommendations on the map.
+        <p className="text-xs text-gray-600 leading-relaxed font-semibold">
+          <span className="font-black">TIP:</span> Click "SAVE CHANGES" to update your profile and see personalized visa recommendations on the map.
         </p>
       </div>
     </div>

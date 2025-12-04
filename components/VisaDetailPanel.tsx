@@ -70,22 +70,22 @@ export function VisaDetailPanel({
 
   const statusConfig = {
     recommended: {
-      bg: 'bg-green-50',
+      bg: 'glass-panel',
       border: 'border-green-200',
-      badge: 'bg-green-100 text-green-800',
-      text: '⭐ May Be Eligible',
+      badge: 'bg-green-100 text-green-800 font-black',
+      text: 'MAY BE ELIGIBLE',
     },
     available: {
-      bg: 'bg-blue-50',
+      bg: 'glass-panel',
       border: 'border-blue-200',
-      badge: 'bg-blue-100 text-blue-800',
-      text: '✓ Could Be a Path',
+      badge: 'bg-blue-100 text-blue-800 font-black',
+      text: 'COULD BE A PATH',
     },
     locked: {
-      bg: 'bg-gray-50',
+      bg: 'glass-panel',
       border: 'border-gray-200',
-      badge: 'bg-gray-100 text-gray-800',
-      text: '🔒 Strengthen Skills First',
+      badge: 'bg-gray-100 text-gray-800 font-black',
+      text: 'STRENGTHEN SKILLS FIRST',
     },
   };
 
@@ -109,14 +109,13 @@ export function VisaDetailPanel({
         {/* Panel Content */}
         <div className="h-full flex flex-col">
           {/* Header - Always visible */}
-          <div className={`${config.bg} border-b ${config.border} p-4 flex-shrink-0`}>
+          <div className={`${config.bg} border-b ${config.border} p-6 flex-shrink-0`}>
             <div className="max-w-7xl mx-auto">
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <span className="text-5xl">{visa.emoji}</span>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{visa.name}</h2>
-                    <p className="text-sm text-gray-600 mt-1">{visa.category}</p>
+                    <h2 className="text-3xl font-black text-black">{visa.name}</h2>
+                    <p className="text-sm text-gray-600 mt-1 font-semibold uppercase">{visa.category}</p>
                   </div>
                 </div>
                 <button
@@ -130,25 +129,25 @@ export function VisaDetailPanel({
 
               {/* Status Badge & Meta Info */}
               <div className="flex items-center gap-4 flex-wrap">
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${config.badge}`}>
+                <div className={`px-4 py-1.5 rounded-full text-xs ${config.badge}`}>
                   {config.text}
                 </div>
 
                 {visa.timeHorizon && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <span className="text-gray-500">⏱️</span>
-                    <span className="text-gray-700 font-medium">
-                      {visa.timeHorizon === 'short' && 'Short-term (6mo-1yr)'}
-                      {visa.timeHorizon === 'medium' && 'Medium-term (1-3yr)'}
-                      {visa.timeHorizon === 'long' && 'Long-term (3+ yr)'}
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-900 font-bold">TIME:</span>
+                    <span className="text-gray-700 font-semibold">
+                      {visa.timeHorizon === 'short' && '6mo-1yr'}
+                      {visa.timeHorizon === 'medium' && '1-3yr'}
+                      {visa.timeHorizon === 'long' && '3+ yr'}
                     </span>
                   </div>
                 )}
 
                 {visa.difficulty && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <span className="text-gray-500">📊</span>
-                    <span className="text-gray-700 font-medium">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-900 font-bold">DIFFICULTY:</span>
+                    <span className="text-gray-700 font-semibold">
                       {visa.difficulty === 1 && 'Easy'}
                       {visa.difficulty === 2 && 'Moderate'}
                       {visa.difficulty === 3 && 'Difficult'}

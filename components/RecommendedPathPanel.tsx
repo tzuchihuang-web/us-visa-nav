@@ -34,21 +34,18 @@ export function RecommendedPathPanel({
       bg: 'bg-green-50',
       border: 'border-green-200',
       badge: 'bg-green-100 text-green-700',
-      icon: '⭐',
       text: 'High Match',
     },
     medium: {
       bg: 'bg-blue-50',
       border: 'border-blue-200',
       badge: 'bg-blue-100 text-blue-700',
-      icon: '✓',
       text: 'Good Match',
     },
     low: {
       bg: 'bg-amber-50',
       border: 'border-amber-200',
       badge: 'bg-amber-100 text-amber-700',
-      icon: '⚠️',
       text: 'Consider Options',
     },
   };
@@ -63,7 +60,7 @@ export function RecommendedPathPanel({
 
   return (
     <div 
-      className={`absolute bottom-0 left-0 right-0 ${config.bg} border-t-2 ${config.border} p-3 ${className} shadow-2xl`}
+      className={`absolute bottom-0 left-0 right-0 glass-panel border-t-2 ${config.border} p-6 ${className} shadow-2xl`}
       style={{
         maxHeight: '40vh',
         overflowY: 'auto',
@@ -71,23 +68,23 @@ export function RecommendedPathPanel({
     >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900">
-              🎯 Recommended Path for You
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <h3 className="text-2xl font-black text-black">
+              RECOMMENDED PATH FOR YOU
             </h3>
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.badge}`}>
-              {config.icon} {config.text}
+            <span className={`px-4 py-1.5 rounded-full text-xs ${config.badge}`}>
+              {config.text}
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-sm text-gray-600">
-              ⏱️ Estimated: {Math.ceil(path.totalEstimatedMonths / 12)} years
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-black font-black">
+              ESTIMATED: {Math.ceil(path.totalEstimatedMonths / 12)} YEARS
             </div>
             {onClose && (
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 text-2xl leading-none font-light transition-colors"
+                className="text-gray-400 hover:text-black text-3xl leading-none font-light transition-colors"
                 aria-label="Close recommended path panel"
               >
                 ×
@@ -97,7 +94,7 @@ export function RecommendedPathPanel({
         </div>
 
         {/* Description */}
-        <p className="text-sm text-gray-700 mb-4">{path.description}</p>
+        <p className="text-sm text-gray-700 mb-5 font-semibold">{path.description}</p>
 
         {/* Path Steps */}
         <div className="flex items-center gap-3 overflow-x-auto pb-2">
@@ -107,35 +104,32 @@ export function RecommendedPathPanel({
               <button
                 onClick={() => handleStepClick(step.visaId)}
                 className={`
-                  flex-shrink-0 p-4 rounded-lg border-2 transition-all
-                  hover:shadow-md hover:scale-105 cursor-pointer
+                  flex-shrink-0 p-5 glass-panel rounded-2xl border-2 transition-all
+                  hover:shadow-lg hover:scale-105 cursor-pointer
                   ${
                     step.score.status === 'recommended'
-                      ? 'bg-white border-green-300 hover:border-green-400'
+                      ? 'border-green-300 hover:border-green-400'
                       : step.score.status === 'available'
-                      ? 'bg-white border-blue-300 hover:border-blue-400'
-                      : 'bg-white border-gray-300 hover:border-gray-400'
+                      ? 'border-blue-300 hover:border-blue-400'
+                      : 'border-gray-300 hover:border-gray-400'
                   }
                 `}
-                style={{ minWidth: '200px' }}
+                style={{ minWidth: '220px' }}
               >
                 <div className="flex items-start gap-3">
-                  {/* Emoji */}
-                  <span className="text-3xl">{step.visa.emoji || '📄'}</span>
-
                   <div className="flex-1 text-left">
                     {/* Step Number */}
-                    <div className="text-xs font-semibold text-gray-500 mb-1">
+                    <div className="text-xs font-black text-gray-500 mb-2 tracking-wider">
                       STEP {index + 1}
                     </div>
 
                     {/* Visa Name */}
-                    <div className="font-bold text-gray-900 mb-1">
+                    <div className="font-black text-black mb-1 text-base">
                       {step.visa.name}
                     </div>
 
                     {/* Visa Code */}
-                    <div className="text-xs text-gray-600 mb-2">
+                    <div className="text-xs text-gray-600 mb-3 font-semibold">
                       {step.visa.code}
                     </div>
 

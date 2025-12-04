@@ -21,47 +21,46 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="glass-panel sticky top-0 z-50 mx-4 mt-4">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">🦅</span>
-            <span className="font-bold text-lg text-gray-900">US Visa Navigator</span>
+            <span className="font-black text-2xl text-black tracking-tight">US VISA NAVIGATOR</span>
           </Link>
 
           {/* Navigation Links - Only show if authenticated */}
           {isAuthenticated && (
-            <nav className="hidden md:flex gap-8 items-center">
+            <nav className="hidden md:flex gap-6 items-center">
               <Link 
                 href="/explore" 
-                className={`font-medium transition-colors ${
+                className={`font-bold text-sm transition-colors ${
                   pathname?.includes("/explore") 
-                    ? "text-blue-600" 
-                    : "text-gray-700 hover:text-gray-900"
+                    ? "text-black underline underline-offset-4" 
+                    : "text-gray-600 hover:text-black"
                 }`}
               >
-                Explore Visas
+                EXPLORE VISAS
               </Link>
               <Link 
                 href="/tracker" 
-                className={`font-medium transition-colors ${
+                className={`font-bold text-sm transition-colors ${
                   pathname?.includes("/tracker") 
-                    ? "text-blue-600" 
-                    : "text-gray-700 hover:text-gray-900"
+                    ? "text-black underline underline-offset-4" 
+                    : "text-gray-600 hover:text-black"
                 }`}
               >
-                Track Application
+                TRACK APPLICATION
               </Link>
               <Link 
                 href="/profile" 
-                className={`font-medium transition-colors ${
+                className={`font-bold text-sm transition-colors ${
                   pathname?.includes("/profile") 
-                    ? "text-blue-600" 
-                    : "text-gray-700 hover:text-gray-900"
+                    ? "text-black underline underline-offset-4" 
+                    : "text-gray-600 hover:text-black"
                 }`}
               >
-                Profile
+                PROFILE
               </Link>
             </nav>
           )}
@@ -79,14 +78,13 @@ export function Header() {
                 </div>
 
                 {/* Logout button */}
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  className="glass-button px-4 py-2 text-sm"
                   onClick={handleLogout}
                   disabled={loading}
                 >
-                  {loading ? "Signing out..." : "Sign Out"}
-                </Button>
+                  {loading ? "Signing out..." : "SIGN OUT"}
+                </button>
               </>
             ) : (
               <>
