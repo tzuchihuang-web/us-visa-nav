@@ -268,15 +268,15 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   };
 
   const getLineStyle = (status: 'recommended' | 'available' | 'locked') => {
-    // 極簡風格 - 統一淺灰色連線，使用較細的線條避免穿透泡泡看起來突兀
+    // 加強連線可見度，使用更明顯的顏色和透明度
     switch (status) {
       case 'recommended':
-        return { stroke: '#e5e7eb', strokeWidth: 1.5, strokeDasharray: 'none', opacity: 0.4 }; // gray-200
+        return { stroke: '#d1d5db', strokeWidth: 2, strokeDasharray: 'none', opacity: 0.6 }; // gray-300
       case 'available':
-        return { stroke: '#f3f4f6', strokeWidth: 1, strokeDasharray: 'none', opacity: 0.3 }; // gray-100
+        return { stroke: '#e5e7eb', strokeWidth: 1.5, strokeDasharray: 'none', opacity: 0.5 }; // gray-200
       case 'locked':
       default:
-        return { stroke: '#f9fafb', strokeWidth: 1, strokeDasharray: '3,3', opacity: 0.2 }; // gray-50
+        return { stroke: '#f3f4f6', strokeWidth: 1, strokeDasharray: '4,4', opacity: 0.35 }; // gray-100
     }
   };
 
@@ -336,11 +336,11 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
           let strokeColor = style.stroke;
           let strokeWidth = style.strokeWidth;
 
-          // 推薦路徑的連線用深灰色實線，不太粗避免穿透泡泡
+          // 推薦路徑的連線用紫色實線，更明顯但不太粗
           if (isOnRecommendedPath) {
-            strokeColor = '#6b7280'; // gray-500
-            strokeWidth = 2;
-            opacity = 0.6;
+            strokeColor = '#a78bfa'; // purple-400
+            strokeWidth = 2.5;
+            opacity = 0.75;
           }
 
           lines.push(
@@ -424,7 +424,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
           <button
             key={visaId}
             onClick={() => handleNodeClick(visaId)}
-            className={`absolute flex flex-col items-center justify-center font-black text-center transition-all duration-300 cursor-pointer group
+            className={`absolute rounded-full flex flex-col items-center justify-center font-black text-center transition-all duration-300 cursor-pointer group
               ${isSelected ? 'scale-110 z-30 !border-4 !border-black' : 'hover:scale-105 z-10'}
               ${
                 isCurrentVisa
@@ -444,6 +444,7 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
                 : undefined,
               backdropFilter: isOnRecommendedPath && !isCurrentVisa && !isSelected ? 'blur(12px)' : undefined,
               border: isOnRecommendedPath && !isCurrentVisa && !isSelected ? '3px solid rgba(255, 255, 255, 0.5)' : undefined,
+              borderRadius: '50%',
             }}
           >
             {/* Visa code label */}
