@@ -190,9 +190,15 @@ export default function Home() {
               {!isPanelOpen && recommendedPath && !isRecommendedPathVisible && (
                 <button
                   onClick={() => setIsRecommendedPathVisible(true)}
-                  className="absolute bottom-6 left-6 z-30 glass-button py-3 px-6 shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="absolute bottom-6 left-6 z-30 py-3 px-6 shadow-xl hover:shadow-2xl transition-all duration-200 font-black text-sm rounded-full animate-pulse"
+                  style={{
+                    background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
+                    color: '#ffffff',
+                    border: '2px solid rgba(255, 255, 255, 0.6)',
+                    boxShadow: '0 8px 24px rgba(139, 92, 246, 0.6), inset 0 0 20px rgba(255, 255, 255, 0.2)',
+                  }}
                 >
-                  <span className="font-black">SHOW RECOMMENDED PATH</span>
+                  ✨ SHOW RECOMMENDED PATH
                 </button>
               )}
 
