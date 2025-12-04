@@ -88,8 +88,43 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.card}>
+    <>
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        {[...Array(8)].map((_, i) => {
+          const size = 60 + Math.random() * 150;
+          const left = Math.random() * 100;
+          const top = Math.random() * 100;
+          const delay = Math.random() * 5;
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: `${size}px`,
+                height: `${size}px`,
+                left: `${left}%`,
+                top: `${top}%`,
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%)',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid rgba(255, 255, 255, 0.5)',
+                boxShadow: 'inset 0 0 20px rgba(255, 255, 255, 0.5), 0 8px 32px rgba(0, 0, 0, 0.1)',
+                animation: `float ${15 + Math.random() * 10}s ease-in-out infinite`,
+                animationDelay: `${delay}s`,
+              }}
+            />
+          );
+        })}
+      </div>
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          25% { transform: translate(${Math.random() * 30 - 15}px, ${Math.random() * 40 - 20}px) rotate(5deg); }
+          50% { transform: translate(${Math.random() * 40 - 20}px, ${Math.random() * 50 - 25}px) rotate(-3deg); }
+          75% { transform: translate(${Math.random() * 30 - 15}px, ${Math.random() * 40 - 20}px) rotate(4deg); }
+        }
+      `}</style>
+      <div className={styles.container} style={{ position: 'relative', zIndex: 10 }}>
+        <div className={styles.card}>
         {/* Header with progress */}
           <div className={styles.header}>
             <h1 className={styles.title}>WELCOME TO US VISA NAVIGATOR</h1>
@@ -286,6 +321,7 @@ export default function OnboardingPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

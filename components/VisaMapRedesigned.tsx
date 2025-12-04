@@ -268,15 +268,15 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
   };
 
   const getLineStyle = (status: 'recommended' | 'available' | 'locked') => {
-    // 極簡風格 - 統一淺灰色連線
+    // 極簡風格 - 統一淺灰色連線，使用較細的線條避免穿透泡泡看起來突兀
     switch (status) {
       case 'recommended':
-        return { stroke: '#d1d5db', strokeWidth: 2, strokeDasharray: 'none' }; // gray-300
+        return { stroke: '#e5e7eb', strokeWidth: 1.5, strokeDasharray: 'none', opacity: 0.4 }; // gray-200
       case 'available':
-        return { stroke: '#e5e7eb', strokeWidth: 2, strokeDasharray: 'none' }; // gray-200
+        return { stroke: '#f3f4f6', strokeWidth: 1, strokeDasharray: 'none', opacity: 0.3 }; // gray-100
       case 'locked':
       default:
-        return { stroke: '#f3f4f6', strokeWidth: 1, strokeDasharray: '4,4' }; // gray-100
+        return { stroke: '#f9fafb', strokeWidth: 1, strokeDasharray: '3,3', opacity: 0.2 }; // gray-50
     }
   };
 
@@ -332,15 +332,15 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
             recommendedPathSet.has(visaId) && 
             recommendedPathSet.has(nextId);
           
-          let opacity = isOnPath ? 0.6 : 0.2;
+          let opacity = style.opacity || (isOnPath ? 0.5 : 0.15);
           let strokeColor = style.stroke;
           let strokeWidth = style.strokeWidth;
 
-          // 推薦路徑的連線用黑色實線
+          // 推薦路徑的連線用深灰色實線，不太粗避免穿透泡泡
           if (isOnRecommendedPath) {
-            strokeColor = '#000000'; // 黑色
-            strokeWidth = 2.5;
-            opacity = 0.8;
+            strokeColor = '#6b7280'; // gray-500
+            strokeWidth = 2;
+            opacity = 0.6;
           }
 
           lines.push(
@@ -452,14 +452,14 @@ const VisaMapRedesigned: React.FC<VisaMapRedesignedProps> = ({
 
             {/* "You are here" 標籤 */}
             {isCurrentVisa && (
-              <div className="absolute -top-9 left-1/2 -translate-x-1/2 font-black text-xs whitespace-nowrap text-yellow-600 px-2 py-1 rounded-lg bg-white/80 backdrop-blur">
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 font-black text-xs whitespace-nowrap text-yellow-700 px-2.5 py-1 rounded-lg bg-yellow-100 backdrop-blur border-2 border-yellow-300 shadow-lg z-50">
                 YOU ARE HERE
               </div>
             )}
 
             {/* 推薦路徑標記 */}
             {isOnRecommendedPath && !isCurrentVisa && (
-              <div className="absolute -top-9 left-1/2 -translate-x-1/2 font-black text-xs whitespace-nowrap text-purple-600 px-2 py-1 rounded-lg bg-white/80 backdrop-blur">
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 font-black text-xs whitespace-nowrap text-purple-700 px-2.5 py-1 rounded-lg bg-purple-100 backdrop-blur border-2 border-purple-300 shadow-lg z-50">
                 RECOMMENDED
               </div>
             )}

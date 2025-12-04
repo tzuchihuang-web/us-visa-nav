@@ -69,8 +69,43 @@ export default function AuthPage() {
   const displayError = localError || error;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4">
-      <Card className="w-full max-w-md glass-panel border-2">
+    <>
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {[...Array(6)].map((_, i) => {
+          const size = 80 + Math.random() * 120;
+          const left = Math.random() * 100;
+          const top = Math.random() * 100;
+          const delay = Math.random() * 5;
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: `${size}px`,
+                height: `${size}px`,
+                left: `${left}%`,
+                top: `${top}%`,
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%)',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid rgba(255, 255, 255, 0.5)',
+                boxShadow: 'inset 0 0 20px rgba(255, 255, 255, 0.5), 0 8px 32px rgba(0, 0, 0, 0.1)',
+                animation: `float ${15 + Math.random() * 10}s ease-in-out infinite`,
+                animationDelay: `${delay}s`,
+              }}
+            />
+          );
+        })}
+      </div>
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          25% { transform: translate(${Math.random() * 30 - 15}px, ${Math.random() * 40 - 20}px) rotate(5deg); }
+          50% { transform: translate(${Math.random() * 40 - 20}px, ${Math.random() * 50 - 25}px) rotate(-3deg); }
+          75% { transform: translate(${Math.random() * 30 - 15}px, ${Math.random() * 40 - 20}px) rotate(4deg); }
+        }
+      `}</style>
+      <div className="min-h-screen flex items-center justify-center bg-white px-4 relative z-10">
+        <Card className="w-full max-w-md glass-panel border-2 relative z-10">
         <div className="p-8">
           {/* Header */}
           <div className="text-center mb-8">
@@ -209,6 +244,7 @@ export default function AuthPage() {
           </div>
         </div>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }
