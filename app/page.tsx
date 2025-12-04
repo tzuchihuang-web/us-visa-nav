@@ -33,6 +33,7 @@ export default function Home() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [selectedVisa, setSelectedVisa] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isRecommendedPathVisible, setIsRecommendedPathVisible] = useState(true);
   const [refreshMapKey, setRefreshMapKey] = useState(0); // Key to force map re-render on save
 
   // Load user profile directly from Supabase
@@ -180,19 +181,29 @@ export default function Home() {
                 onVisaSelect={handleVisaSelect}
                 recommendedPathIds={recommendedPathIds}
               />
-            </div>
-          </div>
+              
+              {/* Show Recommended Path Button - appears when path is hidden (left bottom) */}
+              {!isPanelOpen && recommendedPath && !isRecommendedPathVisible && (
+                <button
+                  onClick={() => setIsRecommendedPathVisible(true)}
+                  className="absolute bottom-6 left-6 z-30 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+                >
+                  <span className="text-lg">🎯</span>
+                  <span>Show Recommended Path</span>
+                </button>
+              )}
 
-          {/* Bottom Section: Recommended Path (if available and no visa selected) */}
-          {!isPanelOpen && recommendedPath && (
-            <RecommendedPathPanel
-              path={recommendedPath}
-              onVisaSelect={handleVisaSelect}
-            />
-          )}
+              {/* Recommended Path Panel - inside Map area (bottom) */}
+              {!isPanelOpen && recommendedPath && isRecommendedPathVisible && (
+                <RecommendedPathPanel
+                  path={recommendedPath}
+                  onVisaSelect={handleVisaSelect}
+                  onClose={() => setIsRecommendedPathVisible(false)}
+                />
+              )}
 
-          {/* Bottom Section: Visa Detail Panel (when visa selected) */}
-          {isPanelOpen && selectedVisaData && selectedVisaData.requirementStatus && (
+              {/* Visa Detail Panel - inside Map area (bottom) */}
+              {isPanelOpen && selectedVisaData && selectedVisaData.requirementStatus && (
             <VisaDetailPanel
               isOpen={isPanelOpen}
               visa={{
@@ -255,7 +266,9 @@ export default function Home() {
               }}
               onClose={handleClosePanel}
             />
-          )}
+              )}
+            </div>
+          </div>
 
           {/* Legal Disclaimer Footer */}
           <LegalDisclaimer />

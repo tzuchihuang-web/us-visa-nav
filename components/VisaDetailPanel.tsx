@@ -11,7 +11,8 @@
 'use client';
 
 import { useState } from 'react';
-import { VISA_KNOWLEDGE_BASE } from '@/lib/visa-knowledge-base';
+import { VISA_KNOWLEDGE_BASE as LIB_VISA_KB } from '@/lib/visa-knowledge-base';
+import { VISA_KNOWLEDGE_BASE as SRC_VISA_KB } from '@/src/data/visaKnowledgeBase';
 
 interface VisaRequirements {
   education?: string;
@@ -63,8 +64,9 @@ export function VisaDetailPanel({
   
   if (!isOpen || !visa) return null;
 
-  // Get full visa data from knowledge base for expanded view
-  const fullVisaData = visa.id ? VISA_KNOWLEDGE_BASE[visa.id.toUpperCase()] : null;
+  // Get full visa data from both knowledge bases for expanded view
+  const libVisaData = visa.id ? LIB_VISA_KB[visa.id.toUpperCase()] : null;
+  const srcVisaData = visa.id ? SRC_VISA_KB.find(v => v.id.toUpperCase() === visa.id.toUpperCase()) : null;
 
   const statusConfig = {
     recommended: {
@@ -98,11 +100,11 @@ export function VisaDetailPanel({
 
   return (
     <>
-      {/* Bottom Panel - Slides up from bottom */}
+      {/* Bottom Panel - Inside Map area */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 shadow-2xl transition-all duration-300 ${
+        className={`absolute bottom-0 left-0 right-0 z-40 bg-white border-t-2 shadow-2xl transition-all duration-300 ${
           config.border
-        } ${isExpanded ? 'h-[80vh]' : 'h-auto max-h-[50vh]'} overflow-hidden`}
+        } ${isExpanded ? 'h-[70vh]' : 'h-auto max-h-[40vh]'} overflow-hidden`}
       >
         {/* Panel Content */}
         <div className="h-full flex flex-col">
@@ -158,12 +160,12 @@ export function VisaDetailPanel({
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-7xl mx-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto" style={{ maxHeight: isExpanded ? 'calc(70vh - 180px)' : 'calc(40vh - 180px)' }}>
+            <div className="max-w-7xl mx-auto p-4 space-y-4">
               {/* Description */}
               {visa.fullDescription && (
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2 text-lg">Overview</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">Overview</h3>
                   <p className="text-sm text-gray-700 leading-relaxed">
                     {visa.fullDescription}
                   </p>
@@ -173,10 +175,10 @@ export function VisaDetailPanel({
               {/* Requirements */}
               {visa.requirements && (
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3 text-lg">Requirements</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <h3 className="font-semibold text-gray-900 mb-2">Requirements</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {visa.requirements.education && (
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
                     <div className="mt-1">
                       {userMeets.education === true ? (
                         <span className="text-green-600 font-bold">✓</span>
@@ -200,7 +202,7 @@ export function VisaDetailPanel({
                 )}
 
                 {visa.requirements.experience && (
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
                     <div className="mt-1">
                       {userMeets.experience === true ? (
                         <span className="text-green-600 font-bold">✓</span>
@@ -224,7 +226,7 @@ export function VisaDetailPanel({
                 )}
 
                 {visa.requirements.english && (
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
                     <div className="mt-1">
                       {userMeets.english === true ? (
                         <span className="text-green-600 font-bold">✓</span>
@@ -248,7 +250,7 @@ export function VisaDetailPanel({
                 )}
 
                 {visa.requirements.investment && (
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
                     <div className="mt-1">
                       {userMeets.investment === true ? (
                         <span className="text-green-600 font-bold">✓</span>
@@ -272,7 +274,7 @@ export function VisaDetailPanel({
                 )}
 
                 {visa.requirements.citizenship && (
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
                     <div className="mt-1">
                       {userMeets.citizenship === true ? (
                         <span className="text-green-600 font-bold">✓</span>
@@ -296,7 +298,7 @@ export function VisaDetailPanel({
                 )}
 
                 {visa.requirements.previousVisa && (
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
                     <div className="mt-1">
                       {userMeets.previousVisa === true ? (
                         <span className="text-green-600 font-bold">✓</span>
@@ -320,7 +322,7 @@ export function VisaDetailPanel({
                 )}
 
                 {visa.requirements.salary && (
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
                     <div className="mt-1">
                       {userMeets.salary === true ? (
                         <span className="text-green-600 font-bold">✓</span>
@@ -344,7 +346,7 @@ export function VisaDetailPanel({
                 )}
 
                 {visa.requirements.sponsorship && (
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
                     <div className="mt-1">
                       {userMeets.sponsorship === true ? (
                         <span className="text-green-600 font-bold">✓</span>
@@ -407,26 +409,59 @@ export function VisaDetailPanel({
               </div>
 
               {/* Expanded Details - Show when Explore Path clicked */}
-              {isExpanded && fullVisaData && (
+              {isExpanded && srcVisaData && (
                 <>
-                  {/* Process Steps */}
-                  {fullVisaData.processSteps && fullVisaData.processSteps.length > 0 && (
+                  {/* Eligibility Criteria */}
+                  {srcVisaData.eligibilityCriteria && srcVisaData.eligibilityCriteria.length > 0 && (
                     <div>
-                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Application Process</h3>
-                      <div className="space-y-3">
-                        {fullVisaData.processSteps
-                          .sort((a, b) => a.order - b.order)
-                          .map((step) => (
+                      <h3 className="font-semibold text-gray-900 mb-2">Eligibility Criteria</h3>
+                      <div className="space-y-2">
+                        {srcVisaData.eligibilityCriteria.map((criterion, index) => (
+                          <div
+                            key={index}
+                            className="flex items-start gap-2 p-2 bg-green-50 border border-green-200 rounded-lg"
+                          >
+                            <span className="text-green-600 mt-0.5">✓</span>
+                            <p className="text-sm text-gray-700 flex-1">{criterion}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Required Documents */}
+                  {srcVisaData.requiredDocuments && srcVisaData.requiredDocuments.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Required Documents</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {srcVisaData.requiredDocuments.map((doc, index) => (
+                          <div
+                            key={index}
+                            className="flex items-start gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg"
+                          >
+                            <span className="text-blue-600">📄</span>
+                            <p className="text-sm text-gray-700 flex-1">{doc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Process Steps */}
+                  {srcVisaData.typicalProcessSteps && srcVisaData.typicalProcessSteps.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Typical Application Process</h3>
+                      <div className="space-y-2">
+                        {srcVisaData.typicalProcessSteps.map((step, index) => (
                             <div
-                              key={step.order}
-                              className="flex gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+                              key={index}
+                              className="flex gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg"
                             >
-                              <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                                {step.order}
+                              <div className="flex-shrink-0 w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">
+                                {index + 1}
                               </div>
                               <div className="flex-1">
-                                <h4 className="font-semibold text-gray-900 mb-1">{step.title}</h4>
-                                <p className="text-sm text-gray-700">{step.description}</p>
+                                <p className="text-sm text-gray-700">{step}</p>
                               </div>
                             </div>
                           ))}
@@ -434,62 +469,21 @@ export function VisaDetailPanel({
                     </div>
                   )}
 
-                  {/* Documents Required */}
-                  {fullVisaData.requirements && fullVisaData.requirements.documents && fullVisaData.requirements.documents.length > 0 && (
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Required Documents</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {fullVisaData.requirements.documents.map((req, index) => (
-                          <div
-                            key={index}
-                            className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg"
-                          >
-                            <span className="text-blue-600">📄</span>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900">{req.item}</p>
-                              {req.description && (
-                                <p className="text-xs text-gray-600 mt-1">{req.description}</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Timeline */}
-                  {fullVisaData.estimatedTotalTime && (
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Timeline</h3>
-                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <span className="text-amber-600">⏰</span>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              Expected Processing Time
-                            </p>
-                            <p className="text-sm text-gray-700 mt-1">{fullVisaData.estimatedTotalTime}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Official Links */}
-                  {fullVisaData.officialLinks && fullVisaData.officialLinks.length > 0 && (
+                  {srcVisaData.officialLinks && srcVisaData.officialLinks.length > 0 && (
                     <div>
-                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Official Resources</h3>
-                      <div className="space-y-2">
-                        {fullVisaData.officialLinks.map((link, index) => (
+                      <h3 className="font-semibold text-gray-900 mb-2">Official Resources</h3>
+                      <div className="space-y-1">
+                        {srcVisaData.officialLinks.map((link, index) => (
                           <a
                             key={index}
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
+                            className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
                           >
                             <span className="text-blue-600">🔗</span>
-                            <span className="text-sm font-medium text-blue-600 hover:underline">
+                            <span className="text-xs font-medium text-blue-600 hover:underline">
                               {link.label}
                             </span>
                           </a>
@@ -503,12 +497,12 @@ export function VisaDetailPanel({
           </div>
 
           {/* Action Footer - Sticky */}
-          <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200">
+          <div className="flex-shrink-0 p-3 bg-white border-t border-gray-200 shadow-lg">
             <div className="max-w-7xl mx-auto flex gap-3">
               {!isExpanded ? (
                 <button
                   onClick={handleExplorePath}
-                  className={`flex-1 font-medium py-3 px-6 rounded-lg transition-colors ${
+                  className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors text-sm ${
                     visa.status === 'locked'
                       ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
                       : 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -520,7 +514,7 @@ export function VisaDetailPanel({
               ) : (
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="flex-1 font-medium py-3 px-6 rounded-lg transition-colors bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  className="flex-1 font-medium py-2 px-4 rounded-lg transition-colors text-sm bg-gray-200 hover:bg-gray-300 text-gray-700"
                 >
                   ← Show Less
                 </button>

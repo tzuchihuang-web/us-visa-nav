@@ -15,12 +15,14 @@ import { RecommendedPath, PathStep } from '@/lib/path-recommendation';
 interface RecommendedPathPanelProps {
   path: RecommendedPath | null;
   onVisaSelect?: (visaId: string) => void;
+  onClose?: () => void;
   className?: string;
 }
 
 export function RecommendedPathPanel({
   path,
   onVisaSelect,
+  onClose,
   className = '',
 }: RecommendedPathPanelProps) {
   if (!path) {
@@ -60,7 +62,13 @@ export function RecommendedPathPanel({
   };
 
   return (
-    <div className={`${config.bg} border-t-2 ${config.border} p-4 ${className}`}>
+    <div 
+      className={`absolute bottom-0 left-0 right-0 ${config.bg} border-t-2 ${config.border} p-3 ${className} shadow-2xl`}
+      style={{
+        maxHeight: '40vh',
+        overflowY: 'auto',
+      }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
@@ -72,8 +80,19 @@ export function RecommendedPathPanel({
               {config.icon} {config.text}
             </span>
           </div>
-          <div className="text-sm text-gray-600">
-            ⏱️ Estimated: {Math.ceil(path.totalEstimatedMonths / 12)} years
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-600">
+              ⏱️ Estimated: {Math.ceil(path.totalEstimatedMonths / 12)} years
+            </div>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none font-light transition-colors"
+                aria-label="Close recommended path panel"
+              >
+                ×
+              </button>
+            )}
           </div>
         </div>
 
